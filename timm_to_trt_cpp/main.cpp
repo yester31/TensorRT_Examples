@@ -8,7 +8,7 @@ static const int INPUT_H = 224;
 static const int INPUT_W = 224;
 static const int INPUT_C = 3;
 static const int OUTPUT_SIZE = 1000;
-static const int precision_mode = 16; // Precision modes: fp32 : 32, fp16 : 16, int8(ptq) : 8
+static const int precision_mode = 16; // Precision modes: fp32 : 32, fp16 : 16
 
 // Input and output tensor names (must match ONNX model)
 std::string INPUT_NAME = "input";
@@ -36,9 +36,10 @@ int main()
     // Create the engine file if it doesn't exist or if forced to serialize
     if (!(serialize == false && exist_engine == true))
     {
-        std::cout << "===== Creating Engine file =====\n";
+        std::cout << "=> 1) Create the engine file\n";
 
         // 1. Create a builder
+        std::cout << "==> 1. Create a builder\n";
         IBuilder *builder = createInferBuilder(logger);
         if (!builder)
         {
@@ -47,7 +48,7 @@ int main()
         }
 
         // 2. Create a network
-        std::cout << "==== Model build start ====\n";
+        std::cout << "==> 2. Create a network\n";
         const auto explicitBatch = 1U << static_cast<uint32_t>(NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
         INetworkDefinition *network = builder->createNetworkV2(explicitBatch);
         if (!network)
@@ -57,6 +58,7 @@ int main()
         }
 
         // 3. Create an ONNX parser
+        std::cout << "==> 3. Create an ONNX parser\n";
         auto parser = nvonnxparser::createParser(*network, logger);
         if (!parser->parseFromFile(onnx_file.c_str(), static_cast<int32_t>(ILogger::Severity::kWARNING)))
         {
@@ -71,6 +73,7 @@ int main()
         }
 
         // 4. Create a builder configuration
+        std::cout << "==> 4. Create a builder configuration\n";
         IBuilderConfig *config = builder->createBuilderConfig();
         if (!config)
         {
@@ -85,22 +88,20 @@ int main()
         // Set precision mode
         if (precision_mode == 16)
         {
-            std::cout << "==== Precision: FP16 ====\n";
+            std::cout << "==> Set precision: FP16\n";
             config->setFlag(BuilderFlag::kFP16);
         }
-        else if (precision_mode == 8)
+        else if (precision_mode == 32)
         {
-            std::cout << "==== Precision: INT8 ====\n";
-            std::cout << "Your platform supports INT8: " << builder->platformHasFastInt8() << std::endl;
-            assert(builder->platformHasFastInt8());
+            std::cout << "==> Set precision: FP32\n";
         }
         else
         {
-            std::cout << "==== Precision: FP32 ====\n";
+            std::cout << "[TRT_WARNING] Wrong precision model value is entered(automatically set to FP32)\n";
         }
 
-        // Build engine
-        std::cout << "Building engine, please wait...\n";
+        // 5. Build engine
+        std::cout << "==> 5. Build engine(please wait...)\n";
         IHostMemory *serializedModel = builder->buildSerializedNetwork(*network, *config);
         if (!serializedModel)
         {
@@ -108,17 +109,15 @@ int main()
             exit(EXIT_FAILURE);
         }
 
-        std::cout << "==== Model build completed ====\n";
-        std::cout << "==== Serializing model start ====\n";
-
-        // Save the serialized model to a file
+        // 6. Save the serialized model to a file
+        std::cout << "==> 6. Save the serialized model to a file\n";
         std::ofstream p(engine_file_path, std::ios::binary);
         if (!p)
         {
-            std::cerr << "Could not open plan output file\n";
+            std::cerr << "[TRT_ERROR] Could not open plan output file\n";
+            exit(EXIT_FAILURE);
         }
         p.write(reinterpret_cast<const char *>(serializedModel->data()), serializedModel->size());
-        std::cout << "==== Model serialization completed ====\n";
         p.close();
 
         // Clean up resources
@@ -127,16 +126,19 @@ int main()
         delete config;
         delete builder;
         delete serializedModel;
-
-        std::cout << "===== Engine file creation complete =====\n";
+        std::cout << "==> 7. Engine file creation complete\n";
+    }
+    else
+    {
+        std::cout << "=> 1) the engine file already exists\n";
     }
 
     // 2) Load the engine file
+    std::cout << "=> 2) Load the TensorRT engine file\n";
+
     char *modelData{nullptr};
     size_t modelSize{0};
-    std::cout << "===== Loading Engine file =====\n";
     std::ifstream file(engine_file_path, std::ios::binary);
-
     if (file.good())
     {
         file.seekg(0, file.end);
@@ -148,12 +150,13 @@ int main()
     }
     else
     {
-        std::cout << "[ERROR] Engine file loading error\n";
-        return 1;
+        std::cerr << "[TRT_ERROR] Engine file loading error\n";
+        exit(EXIT_FAILURE);
     }
 
-    // 3) Deserialize TensorRT Engine from file
-    std::cout << "===== Deserializing Engine file =====\n";
+    // 3) Deserialize TensorRT engine from file
+    std::cout << "=> 3) Deserialize TensorRT engine from file\n";
+
     IRuntime *runtime = createInferRuntime(logger);
     ICudaEngine *engine = runtime->deserializeCudaEngine(modelData, modelSize);
     IExecutionContext *context = engine->createExecutionContext();
@@ -171,29 +174,28 @@ int main()
     context->setTensorAddress(OUTPUT_NAME.c_str(), outputBuffer);
 
     // 4) Prepare input data
-    std::string img_dir = "../../data/";
-    std::vector<std::string> file_names;
+    std::cout << "=> 4) Prepare input data\n";
 
     // Directory path for images
     std::string folderPath = "../data";
+    std::vector<std::string> file_names;
 
     // Open directory pointer
     DIR *dir = opendir(folderPath.c_str());
     if (dir == nullptr)
     {
-        std::cerr << "Cannot open directory: " << folderPath << std::endl;
-        return 1;
+        std::cerr << "[TRT_ERROR] Cannot open directory: " << folderPath << std::endl;
+        exit(EXIT_FAILURE);
     }
 
     // Read directory entries
-    std::cout << "File list:" << std::endl;
     struct dirent *entry;
     while ((entry = readdir(dir)) != nullptr)
     {
         std::string filename = entry->d_name;
         if (isImageFile(filename))
         {
-            std::cout << filename << std::endl;
+            // std::cout << filename << std::endl;
             file_names.push_back(filename);
         }
     }
@@ -203,7 +205,7 @@ int main()
 
     // Load the first sample input image
     std::string sample_input_path = "../data/" + file_names[0];
-    std::cout << "Sample input path: " << sample_input_path << std::endl;
+    std::cout << "==> Sample input data path : " << sample_input_path << std::endl;
 
     cv::Mat img(INPUT_H, INPUT_W, CV_8UC3);
     cv::Mat ori_img;
@@ -217,11 +219,12 @@ int main()
         ori_img = cv::imread(sample_input_path);
         // Resize the image if needed
         // cv::resize(ori_img, img, img.size());
-        memcpy(input_i8.data(), ori_img.data, maxBatchSize * INPUT_H * INPUT_W * INPUT_C);
-        Preprocess(input, input_i8, maxBatchSize, INPUT_C, INPUT_H, INPUT_W);
+        memcpy(input_i8.data(), ori_img.data, maxBatchSize * INPUT_H * INPUT_W * INPUT_C); // mat -> 1d vector
+        Preprocess(input, input_i8, maxBatchSize, INPUT_C, INPUT_H, INPUT_W);              // int8 BGR[NHWC](0, 255) -> float RGB[NCHW](0.f,1.f)
     }
-    std::cout << "===== Input load completed =====\n";
 
+    // 5) Inference
+    std::cout << "=> 5) Inference\n";
     uint64_t dur_time = 0;
 
     // Create a CUDA stream for asynchronous operations
@@ -234,7 +237,6 @@ int main()
     CHECK(cudaMemcpyAsync(outputs.data(), outputBuffer, maxBatchSize * OUTPUT_SIZE * sizeof(float), cudaMemcpyDeviceToHost, stream));
     cudaStreamSynchronize(stream);
 
-    // 5) Inference
     for (uint64_t i = 0; i < iter_count; i++)
     {
         auto start = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -253,6 +255,7 @@ int main()
     dur_time /= 1000.f; // Convert from microseconds to milliseconds
 
     // 6) Print Results
+    std::cout << "=> 6) Print Results\n";
     std::cout << "==================================================\n";
     std::cout << "Model : " << engineFileName << ", Precision : " << precision_mode << "\n";
     std::cout << iter_count << " iterations completed.\n";
