@@ -1,3 +1,7 @@
+import os
+import sys
+sys.path.insert(1, os.path.join(sys.path[0], ".."))
+
 import tensorrt as trt
 import torch
 import cv2
@@ -6,6 +10,7 @@ import numpy as np
 import time
 import common
 from common import *
+from utils import *
 
 current_file_path = os.path.abspath(__file__)
 current_directory = os.path.dirname(current_file_path)
@@ -18,16 +23,6 @@ print(f"Using device: {device}")
 
 TRT_LOGGER = trt.Logger(trt.Logger.INFO)
 TRT_LOGGER.min_severity = trt.Logger.Severity.INFO
-
-def preprocess_image(img):
-    """Preprocess the image for inference."""
-    with torch.no_grad():
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # BGR -> RGB
-        img = torch.from_numpy(img).permute(2, 0, 1).float()  # HWC -> CHW, uint8 -> float32
-        img /= 255.0  # Normalize to [0, 1]
-        img = img.unsqueeze(0)  # [C, H, W] -> [1, C, H, W]
-    return np.array(img, dtype=np.float32, order="C")
-
 
 def get_engine(onnx_file_path, engine_file_path="", precision='fp32'):
     """Load or build a TensorRT engine based on the ONNX model."""
