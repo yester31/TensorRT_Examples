@@ -46,7 +46,7 @@ def main():
     
     # Load or build TensorRT engine
     if os.path.exists(engine_file_path):
-        print(f"[TRT] Reading engine from file {engine_file_path}")
+        print(f"[TRT_E] Reading engine from file {engine_file_path}")
         engine = EngineFromBytes(BytesFromPath(engine_file_path))
     else:
         engine = EngineFromNetwork(NetworkFromOnnxPath(onnx_model_path), config=CreateConfig(fp16=True),) 
@@ -65,14 +65,13 @@ def main():
             torch.cuda.synchronize()
             dur_time += time.time() - begin
 
-        print(f'[TRT] {iteration} iterations time: {dur_time:.4f} [sec]')
-
+        print(f'[TRT_E] {iteration} iterations time: {dur_time:.4f} [sec]')
 
         max_tensor = torch.from_numpy(outputs["output"]).max(dim=1)
         max_value = max_tensor[0].cpu().numpy()[0]
         max_index = max_tensor[1].cpu().numpy()[0]
-        print(f'[TRT] Resnet18 max index: {max_index}, value: {max_value}, class name: {class_name[max_index]}')
-        print("Inference succeeded!")
+        print(f'[TRT_E] Resnet18 max index: {max_index}, value: {max_value}, class name: {class_name[max_index]}')
+        print("[TRT_E] Inference succeeded!")
 
 
 if __name__ == "__main__":

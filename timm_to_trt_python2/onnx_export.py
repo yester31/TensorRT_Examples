@@ -24,7 +24,7 @@ print(f"Using device: {device}")
 def main():
     
     model_name = "resnet18"
-    export_model_path = f"{current_directory}/onnx/{model_name}_{device.type}.onnx"  # Define ONNX model export path
+    export_model_path = os.path.join(current_directory, 'onnx', f'{model_name}_{device.type}.onnx')
     
     # Ensure the export directory exists
     os.makedirs(os.path.dirname(export_model_path), exist_ok=True)
@@ -56,9 +56,8 @@ def main():
     onnx.checker.check_model(onnx_model)  # Perform a validity check
     print("ONNX model validation successful!")
     
-    print(onnx.helper.printable_graph(onnx_model.graph))
-    
     if False :
+        print(onnx.helper.printable_graph(onnx_model.graph))
         sim_model_path = f"{current_directory}/onnx/{model_name}_{device.type}_sim.onnx"  # Define ONNX model export path
         print("=> ONNX simplify start!")
         sim_onnx_model, check = simplify(onnx_model)  # convert(simplify)

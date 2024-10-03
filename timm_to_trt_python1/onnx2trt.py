@@ -37,16 +37,21 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32'):
                 config.set_flag(trt.BuilderFlag.FP16)
 
             if not os.path.exists(onnx_file_path):
-                raise FileNotFoundError(f"[TRT] ONNX file {onnx_file_path} not found.")
+                raise FileNotFoundError(f"[TRT_E] ONNX file {onnx_file_path} not found.")
 
-            print(f"[TRT] Loading and parsing ONNX file: {onnx_file_path}")
+            print(f"[TRT_E] Loading and parsing ONNX file: {onnx_file_path}")
             with open(onnx_file_path, "rb") as model:
                 if not parser.parse(model.read()):
-                    raise RuntimeError("[TRT] Failed to parse the ONNX file.")
+                    raise RuntimeError("[TRT_E] Failed to parse the ONNX file.")
                 for error in range(parser.num_errors):
                     print(parser.get_error(error))
 
-            network.get_input(0).shape = [1, 3, 224, 224]
+            for i_idx in range(network.num_inputs):
+                print(f'[TRT_E] input({i_idx}) name: {network.get_input(i_idx).name}, shape= {network.get_input(i_idx).shape}')
+                
+            for o_idx in range(network.num_outputs):
+                print(f'[TRT_E] output({o_idx}) name: {network.get_output(o_idx).name}, shape= {network.get_output(o_idx).shape}')
+                
             plan = builder.build_serialized_network(network, config)
             engine = runtime.deserialize_cuda_engine(plan)
 
@@ -54,10 +59,10 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32'):
                 f.write(plan)
             return engine
 
-    print(f"[TRT] Engine file path: {engine_file_path}")
+    print(f"[TRT_E] Engine file path: {engine_file_path}")
 
     if os.path.exists(engine_file_path):
-        print(f"[TRT] Reading engine from file {engine_file_path}")
+        print(f"[TRT_E] Reading engine from file {engine_file_path}")
         with open(engine_file_path, "rb") as f, trt.Runtime(TRT_LOGGER) as runtime:
             return runtime.deserialize_cuda_engine(f.read())
     else:
@@ -68,14 +73,15 @@ def main():
     dur_time = 0
 
     # Input
-    img = cv2.imread(f'{current_directory}/data/panda0.jpg')  # Load image
+    img_path = os.path.join(current_directory, 'data', 'panda0.jpg')
+    img = cv2.imread(img_path)  # Load image
     input_image = preprocess_image(img)  # Preprocess image
-
+    
     # Model and engine paths
     precision = "fp16"  # Choose 'fp32' or 'fp16'
     model_name = "resnet18"
-    onnx_model_path = f"onnx/{model_name}_{device.type}.onnx"
-    engine_file_path = f"engine/{model_name}_{precision}.engine"
+    onnx_model_path = os.path.join(current_directory, 'onnx', f'{model_name}_{device.type}.onnx')
+    engine_file_path = os.path.join(current_directory, 'engine', f'{model_name}_{precision}.engine')
     os.makedirs(os.path.dirname(engine_file_path), exist_ok=True)
 
     # Output shapes expected
@@ -98,7 +104,7 @@ def main():
             torch.cuda.synchronize()
             dur_time += time.time() - begin
 
-        print(f'[TRT] {iteration} iterations time: {dur_time:.4f} [sec]')
+        print(f'[TRT_E] {iteration} iterations time: {dur_time:.4f} [sec]')
         
     
     # Reshape and post-process the output
@@ -106,14 +112,15 @@ def main():
 
     # Results
     avg_time = dur_time / iteration
-    print(f'[TRT] Average FPS: {1 / avg_time:.2f} [fps]')
-    print(f'[TRT] Average inference time: {avg_time * 1000:.2f} [msec]')
+    print(f'[TRT_E] Average FPS: {1 / avg_time:.2f} [fps]')
+    print(f'[TRT_E] Average inference time: {avg_time * 1000:.2f} [msec]')
 
     max_tensor = torch.from_numpy(t_outputs[0]).max(dim=1)
     max_value = max_tensor[0].cpu().numpy()[0]
     max_index = max_tensor[1].cpu().numpy()[0]
-    print(f'[TRT] Resnet18 max index: {max_index}, value: {max_value}, class name: {class_name[max_index]}')
+    print(f'[TRT_E] Resnet18 max index: {max_index}, value: {max_value}, class name: {class_name[max_index]}')
     common.free_buffers(inputs, outputs, stream)
+    print("[TRT_E] Inference succeeded!")
 
 
 if __name__ == '__main__':
