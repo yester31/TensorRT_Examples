@@ -103,7 +103,14 @@ def allocate_buffers(engine: trt.ICudaEngine, profile_idx: Optional[int] = None)
         if not shape_valid and profile_idx is None:
             raise ValueError(f"Binding {binding} has dynamic shape, " +\
                 "but no profile was specified.")
+        
         size = trt.volume(shape)
+        if profile_idx is not None and binding == 'output':
+            max_batch_size = engine.get_tensor_profile_shape(tensor_names[0], profile_idx)[-1][0] 
+            shape = engine.get_tensor_shape('output')
+            shape[0] = max_batch_size
+            size = trt.volume(shape)
+            
         trt_type = engine.get_tensor_dtype(binding)
 
         # Allocate host and device buffers
