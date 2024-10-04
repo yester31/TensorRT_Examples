@@ -1,5 +1,5 @@
-# by yhpark 2024-09-27
-# TIMM ResNet18 ONNX model generation for C++ TensorRT example
+# by yhpark 2024-10-04
+# TIMM ResNet18 ONNX model generation for dynamic batch size
 import torch
 import torch.onnx
 import onnx

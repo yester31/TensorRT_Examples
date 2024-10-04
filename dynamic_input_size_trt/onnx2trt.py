@@ -1,3 +1,5 @@
+# by yhpark 2024-10-04
+# TIMM ResNet18 ONNX model generation for dynamic input size
 import os
 import sys
 sys.path.insert(1, os.path.join(sys.path[0], ".."))
