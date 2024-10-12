@@ -24,6 +24,8 @@ print(f"Using device: {device}")
 TRT_LOGGER = trt.Logger(trt.Logger.INFO)
 TRT_LOGGER.min_severity = trt.Logger.Severity.INFO
 
+timing_cache = f"{current_directory}/timing.cache"
+
 def get_engine(onnx_file_path, engine_file_path="", precision='fp32'):
     """Load or build a TensorRT engine based on the ONNX model."""
     def build_engine():
@@ -32,19 +34,23 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32'):
                 builder.create_builder_config() as config, \
                 trt.OnnxParser(network, TRT_LOGGER) as parser, \
                 trt.Runtime(TRT_LOGGER) as runtime:
-
-            if precision == "fp16" and builder.platform_has_fast_fp16:
-                config.set_flag(trt.BuilderFlag.FP16)
-
+                    
             if not os.path.exists(onnx_file_path):
-                raise FileNotFoundError(f"[TRT_E] ONNX file {onnx_file_path} not found.")
+                raise FileNotFoundError(f"[TRT] ONNX file {onnx_file_path} not found.")
 
-            print(f"[TRT_E] Loading and parsing ONNX file: {onnx_file_path}")
+            print(f"[TRT] Loading and parsing ONNX file: {onnx_file_path}")
             with open(onnx_file_path, "rb") as model:
                 if not parser.parse(model.read()):
-                    raise RuntimeError("[TRT_E] Failed to parse the ONNX file.")
+                    raise RuntimeError("[TRT] Failed to parse the ONNX file.")
                 for error in range(parser.num_errors):
                     print(parser.get_error(error))
+                    
+            common.setup_timing_cache(config, timing_cache)
+            config.profiling_verbosity = trt.ProfilingVerbosity.DETAILED
+            config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, common.GiB(1))
+            config.set_flag(trt.BuilderFlag.SPARSE_WEIGHTS)
+            if precision == "fp16" and builder.platform_has_fast_fp16:
+                config.set_flag(trt.BuilderFlag.FP16)
 
             for i_idx in range(network.num_inputs):
                 print(f'[TRT_E] input({i_idx}) name: {network.get_input(i_idx).name}, shape= {network.get_input(i_idx).shape}')
@@ -54,7 +60,7 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32'):
                 
             plan = builder.build_serialized_network(network, config)
             engine = runtime.deserialize_cuda_engine(plan)
-
+            common.save_timing_cache(config, timing_cache)
             with open(engine_file_path, "wb") as f:
                 f.write(plan)
             return engine
