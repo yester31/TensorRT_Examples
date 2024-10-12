@@ -37,8 +37,6 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32', dynamic_in
                 trt.OnnxParser(network, TRT_LOGGER) as parser, \
                 trt.Runtime(TRT_LOGGER) as runtime:
             
-            common.setup_timing_cache(config, timing_cache)
-            
             if not os.path.exists(onnx_file_path):
                 raise FileNotFoundError(f"[TRT] ONNX file {onnx_file_path} not found.")
 
@@ -49,8 +47,13 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32', dynamic_in
                 for error in range(parser.num_errors):
                     print(parser.get_error(error))
                     
+            common.setup_timing_cache(config, timing_cache)
             config.profiling_verbosity = trt.ProfilingVerbosity.DETAILED
-            
+            config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, common.GiB(1))
+            config.set_flag(trt.BuilderFlag.SPARSE_WEIGHTS)
+            if precision == "fp16" and builder.platform_has_fast_fp16:
+                config.set_flag(trt.BuilderFlag.FP16)
+                
             # The input text length is variable, so we need to specify an optimization profile.
             profile = builder.create_optimization_profile()
             for i in range(network.num_inputs):
@@ -62,13 +65,13 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32', dynamic_in
                 profile.set_shape(input.name, min_shape, opt_shape, max_shape) # any dynamic input tensors
                 #profile.set_shape_input(input.name, min_shape, opt_shape, max_shape) # any shape input tensors
                 print("[TRT_E] Input '{}' Optimization Profile with shape MIN {} / OPT {} / MAX {}".format(input.name, min_shape, opt_shape, max_shape))
-            
             config.add_optimization_profile(profile)
             
-            config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, 1 << 20) # 1 MiB
-            config.set_flag(trt.BuilderFlag.SPARSE_WEIGHTS)
-            if precision == "fp16" and builder.platform_has_fast_fp16:
-                config.set_flag(trt.BuilderFlag.FP16)
+            for i_idx in range(network.num_inputs):
+                print(f'[TRT_E] input({i_idx}) name: {network.get_input(i_idx).name}, shape= {network.get_input(i_idx).shape}')
+                
+            for o_idx in range(network.num_outputs):
+                print(f'[TRT_E] output({o_idx}) name: {network.get_output(o_idx).name}, shape= {network.get_output(o_idx).shape}')
     
             plan = builder.build_serialized_network(network, config)
             engine = runtime.deserialize_cuda_engine(plan)
