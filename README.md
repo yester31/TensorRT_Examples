@@ -1,23 +1,27 @@
 # Examples of TensorRT models using ONNX
 
-All useful sample codes of tensorrt models using onnx
+All useful sample codes of TensorRT models using ONNX
 
 ## 1. Basic step
 
-1. Generation TensorRT Model by using Onnx  
-   1.1 TensorRT CPP API  
-   1.2 TensorRT Python API  
-   1.3 Polygraphy
-2. Dynamic shapes for Tensorrt  
-   2.1 Dynamic batch  
-   2.2 Dynamic input size
+1. Generation TensorRT Model by using ONNX  
+   [1.1 TensorRT CPP API](timm_to_trt_cpp/README.md)  
+   [1.2 TensorRT Python API](timm_to_trt_python1/README.md)  
+   [1.3 Polygraphy](timm_to_trt_python2/README.md)
+
+2. Dynamic shapes for TensorRT  
+   [2.1 Dynamic batch](dynamic_batch_trt/README.md)  
+   [2.2 Dynamic input size](dynamic_input_size_trt/README.md)
 
 ## 2. Intermediate step
 
-3. ONNX GraphSurgeon  
-   3.1 Modifying onnx graph for Grad-Cam
-4. Custom Layers(plugin)  
-   4.1 Adding pre-processing layer to TensorRT Model
+3. Custom Plugin  
+   [3.1 Adding a pre-processing layer by cuda](custom_layer/README.md)
+
+4. Modifying an ONNX graph by ONNX GraphSurgeon  
+   [4.1 Extracting a feature map of the last Conv for Grad-Cam](gradcam_trt/README.md)  
+   4.2 Generating a TensorRT model with a custom plugin and ONNX
+
 5. TensorRT Model Optimizer  
    5.1 Explict Quantization (PTQ)  
    5.2 Explict Quantization (QAT)  
@@ -29,3 +33,7 @@ All useful sample codes of tensorrt models using onnx
 7. Object Detection
 8. Instance Segmentation
 9. Semantic Segmentation
+
+## 4. reference
+
+- [TensorRT-Github](https://github.com/NVIDIA/TensorRT)
