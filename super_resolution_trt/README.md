@@ -34,7 +34,7 @@ python onnx_export.py
 
 ```
 python onnx2trt.py
-// a file 'resnet18_fp16.engine' will be generated in engine directory.
+// a file 'RealESRGAN_x4plus_fp16.engine' will be generated in engine directory.
 ```
 
 https://github.com/xinntao/Real-ESRGAN
