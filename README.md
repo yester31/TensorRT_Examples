@@ -29,10 +29,14 @@ All useful sample codes of TensorRT models using ONNX
 
 ## 3. Advanced step
 
-6. Super Resolution
+6. Super Resolution  
+   [6.1 Real-ESRGAN](super_resolution_trt/README.md)
 7. Object Detection
 8. Instance Segmentation
 9. Semantic Segmentation
+10. Depth Estimation  
+     [10.1 Depth Pro](depth_estimation_trt/README.md) (
+    "It is under repair due to an accuracy issue.")
 
 ## 4. reference
 
