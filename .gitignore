@@ -1,3 +1,6 @@
+Real-ESRGAN/
+weights/
+save/
 *.cache
 build/
 onnx/
