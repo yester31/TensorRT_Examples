@@ -1,5 +1,5 @@
 # by yhpark 2024-10-04
-# GradCam with TensorRT example
+# TIMM ResNet18 GradCam TensorRT example
 import os
 import sys
 sys.path.insert(1, os.path.join(sys.path[0], ".."))
