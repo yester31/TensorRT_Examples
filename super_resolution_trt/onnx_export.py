@@ -8,7 +8,6 @@ from basicsr.archs.rrdbnet_arch import RRDBNet
 from basicsr.utils.download_util import load_file_from_url
 
 sys.path.insert(1, os.path.join(sys.path[0], "Real-ESRGAN"))
-#sys.path.insert(1, os.path.join(sys.path[0], "Real-ESRGAN", "realesrgan"))
 
 from realesrgan import RealESRGANer
 from realesrgan.archs.srvgg_arch import SRVGGNetCompact

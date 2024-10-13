@@ -1,5 +1,5 @@
-# by yhpark 2024-10-04
-# TIMM ResNet18 ONNX model generation for dynamic input size
+# by yhpark 2024-10-13
+# Real Esrgan TensorRT model generation
 import os
 import sys
 
