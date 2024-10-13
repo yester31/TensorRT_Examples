@@ -89,7 +89,7 @@ class HostDeviceMem:
 
 # Allocates all buffers required for an engine, i.e. host/device inputs/outputs.
 # If engine uses dynamic shapes, specify a profile to find the maximum input & output size.
-def allocate_buffers(engine: trt.ICudaEngine, profile_idx: Optional[int] = None):
+def allocate_buffers(engine: trt.ICudaEngine, output_shape:np.ndarray = None, profile_idx: Optional[int] = None):
     inputs = []
     outputs = []
     bindings = []
@@ -106,10 +106,7 @@ def allocate_buffers(engine: trt.ICudaEngine, profile_idx: Optional[int] = None)
         
         size = trt.volume(shape)
         if profile_idx is not None and binding == 'output':
-            max_batch_size = engine.get_tensor_profile_shape(tensor_names[0], profile_idx)[-1][0] 
-            shape = engine.get_tensor_shape('output')
-            shape[0] = max_batch_size
-            size = trt.volume(shape)
+            size = trt.volume(output_shape)
             
         trt_type = engine.get_tensor_dtype(binding)
 

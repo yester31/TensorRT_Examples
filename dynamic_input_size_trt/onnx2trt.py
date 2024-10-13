@@ -54,16 +54,14 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32', dynamic_in
             if precision == "fp16" and builder.platform_has_fast_fp16:
                 config.set_flag(trt.BuilderFlag.FP16)
                 
-            # The input text length is variable, so we need to specify an optimization profile.
             profile = builder.create_optimization_profile()
-            for i in range(network.num_inputs):
-                input = network.get_input(i)
+            for i_idx in range(network.num_inputs):
+                input = network.get_input(i_idx)
                 assert input.shape[0] == -1
                 min_shape = dynamic_input_shapes[0]
                 opt_shape = dynamic_input_shapes[1]
                 max_shape = dynamic_input_shapes[2]
                 profile.set_shape(input.name, min_shape, opt_shape, max_shape) # any dynamic input tensors
-                #profile.set_shape_input(input.name, min_shape, opt_shape, max_shape) # any shape input tensors
                 print("[TRT_E] Input '{}' Optimization Profile with shape MIN {} / OPT {} / MAX {}".format(input.name, min_shape, opt_shape, max_shape))
             config.add_optimization_profile(profile)
             
@@ -111,7 +109,7 @@ def main():
     dynamic_input_shapes = [[1,3,128,128],[4,3,224,224],[8,3,256,256]]
     
     # Output shapes expected
-    output_shapes = [(dynamic_input_shapes[-1][0], 1000)]
+    output_shapes = [(batch_images.shape[0], 1000)]
 
     # Load or build the TensorRT engine and do inference
     with get_engine(onnx_model_path, engine_file_path, precision, dynamic_input_shapes) as engine, \
@@ -122,7 +120,7 @@ def main():
         #print(inspector.get_layer_information(0, trt.tensorrt.LayerInformationFormat.JSON)) # Print the information of the first layer in the engine.
         #print(inspector.get_engine_information( trt.tensorrt.LayerInformationFormat.JSON)) # Print the information of the entire engine.
         
-        inputs, outputs, bindings, stream = common.allocate_buffers(engine, profile_idx=0)
+        inputs, outputs, bindings, stream = common.allocate_buffers(engine, output_shapes[0], profile_idx=0)
         inputs[0].host = batch_images
         
         context.set_input_shape('input', batch_images.shape)

@@ -49,7 +49,7 @@ def main():
             output_names=["output"], 
             dynamic_axes={
                 "input": {0: "batch_size", 2: "width", 3: "height"},
-                "output": {0: "batch_size", 2: "width", 3: "height"}
+                "output": {0: "batch_size"}
                 }  
         )
         print(f"ONNX model exported to: {export_model_path}")

@@ -1,4 +1,4 @@
-# dynamic_batch_size_trt
+# dynamic_input_size_trt
 
 ## How to Run
 
