@@ -143,8 +143,8 @@ def main():
                             ]
     
     # Output shapes expected(max shape size)
-    output_shapes = (1, 3, input_image.shape[2]*4, input_image.shape[3]*4)
-    print(output_shapes)
+    max_output_shapes = (1, 3, dynamic_input_shapes[2][2]*4, dynamic_input_shapes[2][3]*4)
+    print(max_output_shapes)
 
     # Load or build the TensorRT engine and do inference
     with get_engine(onnx_model_path, engine_file_path, precision, dynamic_input_shapes) as engine, \
@@ -155,11 +155,12 @@ def main():
         #print(inspector.get_layer_information(0, trt.tensorrt.LayerInformationFormat.JSON)) # Print the information of the first layer in the engine.
         #print(inspector.get_engine_information( trt.tensorrt.LayerInformationFormat.JSON)) # Print the information of the entire engine.
         
-        inputs, outputs, bindings, stream = common.allocate_buffers(engine, output_shapes, profile_idx=0)
+        inputs, outputs, bindings, stream = common.allocate_buffers(engine, max_output_shapes, profile_idx=0)
         inputs[0].host = batch_images
         
         context.set_input_shape('input', batch_images.shape)
-        
+        output_shapes = (1, 3, batch_images.shape[2]*4, batch_images.shape[3]*4)
+
         # Warm-up        
         common.do_inference(context, engine=engine, bindings=bindings, inputs=inputs, outputs=outputs, stream=stream)
         
