@@ -1,3 +1,8 @@
+calibration_data/
+imagenet100/
+imagenet100.zip
+checkpoint/
+train_progress/
 compare_array/
 ml-depth-pro/
 Real-ESRGAN/

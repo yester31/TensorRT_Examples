@@ -23,7 +23,7 @@ All useful sample codes of TensorRT models using ONNX
    4.2 Generating a TensorRT model with a custom plugin and ONNX
 
 5. TensorRT Model Optimizer  
-   5.1 Explict Quantization (PTQ)  
+   [5.1 Explict Quantization (PTQ)](tmo/tmo_ptq/README.md)  
    5.2 Explict Quantization (QAT)  
    5.3 Sparsity (2:4 sparsity pattern)
 

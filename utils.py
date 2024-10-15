@@ -1,6 +1,26 @@
 import torch
 import cv2 
 import numpy as np 
+import json
+import random
+
+def set_random_seed(random_seed = 42):
+   print("[set random seeds]")
+   torch.manual_seed(random_seed)
+   torch.backends.cudnn.deterministic = True
+   torch.backends.cudnn.benchmark = False
+   np.random.seed(random_seed)
+   random.seed(random_seed)
+
+
+def read_json(file_path):
+    with open(file_path, 'r', encoding='utf-8') as file:
+        data = json.load(file)
+    return data
+
+def write_json(data, file_path):
+    with open(file_path, 'w', encoding='utf-8') as file:
+        json.dump(data, file, ensure_ascii=False, indent=4)
 
 def preprocess_image(img):
    """
