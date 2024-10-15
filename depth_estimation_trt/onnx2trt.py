@@ -128,10 +128,11 @@ def main():
     img = Image.open(image_path)
     H = img.size[1]
     W = img.size[0]
-    print(img.size)
+    print(f'original shape : {img.size}')
     input_image = preprocess_image(img)  # Preprocess image
+    print(f'after preprocess shape : {input_image.size}')
     batch_images = np.concatenate([input_image], axis=0)
-    print(batch_images.shape)
+    print(f'trt input shape : {batch_images.shape}')
 
     # Model and engine paths
     precision = "fp16"  # Choose 'fp32' or 'fp16'
@@ -141,8 +142,8 @@ def main():
     os.makedirs(os.path.dirname(engine_file_path), exist_ok=True)
 
     # Output shapes 
-    output_shapes1 = (1, 1, input_image.shape[2], input_image.shape[3])
-    print(output_shapes1)
+    output_shapes = (1, 1, input_image.shape[2], input_image.shape[3])
+    print(f'trt output shape : {output_shapes}')
 
     # Load or build the TensorRT engine and do inference
     with get_engine(onnx_model_path, engine_file_path, precision) as engine, \
@@ -171,7 +172,7 @@ def main():
         print(f'[TRT] {iteration} iterations time: {dur_time:.4f} [sec]')
 
     # # Reshape and post-process the output
-    new_outputs1 = trt_outputs[0].reshape(output_shapes1)
+    new_outputs1 = trt_outputs[0].reshape(output_shapes)
     new_outputs2 = trt_outputs[1] # 54.45
     
     canonical_inverse_depth = torch.from_numpy(new_outputs1)
