@@ -11,46 +11,18 @@ import timm
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import sys
 import json
 sys.path.insert(1, os.path.join(sys.path[0], "../.."))
 from utils import *
 
-set_random_seed()
-   
-current_file_path = os.path.abspath(__file__)
-current_directory = os.path.dirname(current_file_path)
-print(f"current file path: {current_file_path}")
-print(f"current directory: {current_directory}")
-
-# Hyperparameter settings
-batch_size = 128
-num_epochs = 10
-learning_rate = 0.001
-best_val_acc = 0.0  # Criterion for saving the best model
-checkpoint_dir_path = f'{current_directory}/checkpoint'  # Directory to save graphs and models
-train_progress_dir_path = f'{current_directory}/train_progress'  # Directory to save graphs and models
-
-# Create a folder to store results
-if not os.path.exists(checkpoint_dir_path):
-    os.makedirs(checkpoint_dir_path)
-if not os.path.exists(train_progress_dir_path):
-    os.makedirs(train_progress_dir_path)
-
-# Define data preprocessing (for ImageNet100)
-transform = transforms.Compose([
-    transforms.Resize(256),
-    transforms.CenterCrop(224),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-])
-
 # Function to load training and validation data
-def load_data(batch_size):
-    train_dataset = datasets.ImageFolder(root=f'{current_directory}/../datasets/imagenet100/train', transform=transform)
-    val_dataset = datasets.ImageFolder(root=f'{current_directory}/../datasets/imagenet100/val', transform=transform)
+def load_data(batch_size, dataset_base_path, transform):
+    train_dataset = datasets.ImageFolder(root=f'{dataset_base_path}/train', transform=transform)
+    val_dataset = datasets.ImageFolder(root=f'{dataset_base_path}/val', transform=transform)
 
     class_to_idx = train_dataset.class_to_idx
-    file_path = f'{current_directory}/../datasets/imagenet100/class_to_idx.json'
+    file_path = f'{dataset_base_path}/class_to_idx.json'
     write_json(class_to_idx, file_path)
 
     train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
@@ -59,12 +31,12 @@ def load_data(batch_size):
     return train_loader, val_loader
 
 # Function to load the model
-def load_model():
-    model = timm.create_model('resnet18', pretrained=False, num_classes=100)
+def load_model(num_classes=100):
+    model = timm.create_model('resnet18', pretrained=False, num_classes=num_classes)
     return model
 
 # Function to save the plot as a file
-def save_plot(train_losses, val_losses, train_accuracies, val_accuracies, epoch):
+def save_plot(train_losses, val_losses, train_accuracies, val_accuracies, epoch, train_progress_dir_path):
     plt.figure(figsize=(12, 5))
 
     # Loss graph
@@ -86,17 +58,19 @@ def save_plot(train_losses, val_losses, train_accuracies, val_accuracies, epoch)
     plt.tight_layout()
 
     # Save the graph as a file
-    plot_path = os.path.join(current_directory, 'train_progress', 'loss_accuracy.png')
+    plot_path = os.path.join(train_progress_dir_path, 'loss_accuracy.png')
     os.makedirs(os.path.dirname(plot_path), exist_ok=True)
     plt.savefig(plot_path)
     plt.close()  # Close the plot to free memory
 
+
+best_val_acc = 0.0  # Criterion for saving the best model
 # Function to save the best model
-def save_checkpoint(model, epoch, val_acc):
+def save_checkpoint(model, epoch, val_acc, checkpoint_dir_path, suffix = ''):
     global best_val_acc
     if val_acc > best_val_acc:
         best_val_acc = val_acc
-        model_path = os.path.join(current_directory, 'checkpoint', f'best_model.pth')
+        model_path = os.path.join(checkpoint_dir_path, f'best_model{suffix}.pth')
         torch.save(model.state_dict(), model_path)
         print(f"Best model saved at epoch {epoch} with validation accuracy {val_acc:.2f}%")
 
@@ -158,9 +132,39 @@ def validate(model, val_loader, criterion, device):
 
 # Main training loop
 def main():
+    set_random_seed()
+   
+    current_file_path = os.path.abspath(__file__)
+    current_directory = os.path.dirname(current_file_path)
+    print(f"current file path: {current_file_path}")
+    print(f"current directory: {current_directory}")
+
+    # Hyperparameter settings
+    batch_size = 128
+    num_epochs = 10
+    learning_rate = 0.001
+    best_val_acc = 0.0  # Criterion for saving the best model
+    checkpoint_dir_path = f'{current_directory}/checkpoint'  # Directory to save graphs and models
+    train_progress_dir_path = f'{current_directory}/train_progress'  # Directory to save graphs and models
+    dataset_base_path = f'{current_directory}/../datasets/imagenet100'
+
+    # Create a folder to store results
+    if not os.path.exists(checkpoint_dir_path):
+        os.makedirs(checkpoint_dir_path)
+    if not os.path.exists(train_progress_dir_path):
+        os.makedirs(train_progress_dir_path)
+
+    # Define data preprocessing (for ImageNet100)
+    transform = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ])
+
     # Set up model, data, loss function, and optimizer
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    train_loader, val_loader = load_data(batch_size)
+    train_loader, val_loader = load_data(batch_size, dataset_base_path, transform)
     model = load_model().to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
@@ -187,10 +191,10 @@ def main():
         print(f"Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_acc:.2f}%")
 
         # Save the best model
-        save_checkpoint(model, epoch, val_acc)
+        save_checkpoint(model, epoch, val_acc, checkpoint_dir_path)
 
         # Save the graph as a file
-        save_plot(train_losses, val_losses, train_accuracies, val_accuracies, epoch)
+        save_plot(train_losses, val_losses, train_accuracies, val_accuracies, epoch, train_progress_dir_path)
 
     print("Training complete.")
 

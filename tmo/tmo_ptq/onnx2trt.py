@@ -136,16 +136,21 @@ def main():
     model_name = "resnet18"
     if ptq_onnx:
         precision = "int8" 
-        onnx_model_path = os.path.join(current_directory, 'onnx', f'{model_name}_{device.type}_ptq_bf.onnx')
+        onnx_model_path = os.path.join(current_directory, 'onnx', f'{model_name}_{device.type}_ptq_bf.onnx') # batch folding before ptq
         engine_file_path = os.path.join(current_directory, 'engine', f'{model_name}_{precision}_ptq_bf.engine')
-        # Average FPS: 4825.61 [fps] <- wo batch folding
-        # Average FPS: 5504.44 [fps] <- w batch folding
+        onnx_model_path = os.path.join(current_directory, 'onnx', f'{model_name}_{device.type}_ptq.onnx') # no batch folding 
+        engine_file_path = os.path.join(current_directory, 'engine', f'{model_name}_{precision}_ptq.engine')
+        # Average FPS: 5622.21 [fps] <- int8 PTQ(quantize) w batch folding
+        # Average FPS: 4847.31 [fps] <- int8 PTQ(quantize) wo batch folding
+        onnx_model_path = os.path.join(current_directory, 'onnx', f'{model_name}_{device.type}_ptq_auto_bf.onnx')
+        engine_file_path = os.path.join(current_directory, 'engine', f'{model_name}_{precision}_ptq_auto_bf.engine')
+        # Average FPS: 5574.66 [fps] <- int8 PTQ(auto_quantize) w batch folding
     else :
         precision = "fp16" # Choose 'fp32' or 'fp16'
         onnx_model_path = os.path.join(current_directory, 'onnx', f'{model_name}_{device.type}_bf.onnx')
         engine_file_path = os.path.join(current_directory, 'engine', f'{model_name}_{precision}_bf.engine')
-        # Average FPS: 4887.49 [fps] <- wo batch folding
-        # Average FPS: 4886.81 [fps] <- w batch folding
+        # Average FPS: 4886.81 [fps] <- f16 w batch folding
+        # Average FPS: 4887.49 [fps] <- f16 wo batch folding
     os.makedirs(os.path.dirname(engine_file_path), exist_ok=True)
 
     # Output shapes expected

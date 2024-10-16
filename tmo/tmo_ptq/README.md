@@ -19,13 +19,13 @@ python train.py
 // 'best_model.pth' will be generated in checkpoint directory.
 ```
 
-2. train resnet18 with imagenet100 dataset
+3. Post-training quantization (PTQ)
 
 ```
 cd tmo_ptq
 python ptq_onnx_export.py
 python onnx2trt.py
-// a file 'resnet18_int8.engine' will be generated in engine directory.
+// a file 'resnet18_int8_ptq_bf.engine' will be generated in engine directory.
 ```
 
 ## Reference

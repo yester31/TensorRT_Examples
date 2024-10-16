@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 import cv2 
 import numpy as np 
 import json
@@ -44,6 +45,94 @@ def preprocess_image(img):
       img = img.unsqueeze(0)
       # Return as NumPy array (C-order)   
    return np.array(img, dtype=np.float32, order="C")
+
+
+def preprocess_image2(image):
+    # BGR -> RGB
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  
+    # resize 256x256
+    image_resized = cv2.resize(image, (256, 256), interpolation=cv2.INTER_LINEAR)
+    # center crop 224x224 
+    h, w, _ = image_resized.shape
+    top = (h - 224) // 2
+    left = (w - 224) // 2
+    image_cropped = image_resized[top:top + 224, left:left + 224]
+    # HWC -> CHW, [0, 1]
+    image_tensor = image_cropped.transpose(2, 0, 1) / 255.0
+    
+    # normalize
+    mean = np.array([0.485, 0.456, 0.406]).reshape(3, 1, 1)
+    std = np.array([0.229, 0.224, 0.225]).reshape(3, 1, 1)
+    image_normalized = (image_tensor - mean) / std
+    
+    # Add batch dimension (C, H, W) -> (1, C, H, W)
+    image_normalized = np.expand_dims(image_normalized, axis=0)
+    # Return as NumPy array (C-order)   
+    return np.array(image_normalized, dtype=np.float32, order="C")
+
+
+def fuse_single_conv_bn_pair(block1, block2):
+    if isinstance(block1, nn.BatchNorm2d) and isinstance(block2, nn.Conv2d):
+        m = block1
+        conv = block2
+
+        bn_st_dict = m.state_dict()
+        conv_st_dict = conv.state_dict()
+
+        # BatchNorm params
+        eps = m.eps
+        mu = bn_st_dict['running_mean']
+        var = bn_st_dict['running_var']
+        gamma = bn_st_dict['weight']
+
+        if 'bias' in bn_st_dict:
+            beta = bn_st_dict['bias']
+        else:
+            beta = torch.zeros(gamma.size(0)).float().to(gamma.device)
+
+        # Conv params
+        W = conv_st_dict['weight']
+        if 'bias' in conv_st_dict:
+            bias = conv_st_dict['bias']
+        else:
+            bias = torch.zeros(W.size(0)).float().to(gamma.device)
+
+        denom = torch.sqrt(var + eps)
+        b = beta - gamma.mul(mu).div(denom)
+        A = gamma.div(denom)
+        bias *= A
+        A = A.expand_as(W.transpose(0, -1)).transpose(0, -1)
+
+        W.mul_(A)
+        bias.add_(b)
+
+        conv.weight.data.copy_(W)
+
+        if conv.bias is None:
+            conv.bias = torch.nn.Parameter(bias)
+        else:
+            conv.bias.data.copy_(bias)
+        return conv
+    else:
+        return False
+
+def fuse_bn_recursively(model):
+    previous_name = None
+
+    for module_name in model._modules:
+        previous_name = module_name if previous_name is None else previous_name  # Initialization
+
+        conv_fused = fuse_single_conv_bn_pair(model._modules[module_name], model._modules[previous_name])
+        if conv_fused:
+            model._modules[previous_name] = conv_fused
+            model._modules[module_name] = nn.Identity()
+
+        if len(model._modules[module_name]._modules) > 0:
+            fuse_bn_recursively(model._modules[module_name])
+
+        previous_name = module_name
+
+    return model
 
 
 class_name = [  #bg +  1000 classes #"background",
