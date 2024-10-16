@@ -28,5 +28,7 @@ python onnx2trt.py
 // a file 'resnet18_int8.engine' will be generated in engine directory.
 ```
 
-https://github.com/NVIDIA/TensorRT-Model-Optimizer
-https://www.kaggle.com/datasets/ambityga/imagenet100
+## Reference
+
+- [TensorRT-Model-Optimizer](https://github.com/NVIDIA/TensorRT-Model-Optimizer)
+- [imagenet100](https://www.kaggle.com/datasets/ambityga/imagenet100)

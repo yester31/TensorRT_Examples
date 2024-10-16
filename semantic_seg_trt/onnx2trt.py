@@ -1,9 +1,5 @@
-# by yhpark 2024-10-04
-# TIMM ResNet18 GradCam TensorRT example
 import os
 import sys
-sys.path.insert(1, os.path.join(sys.path[0], ".."))
-
 import tensorrt as trt
 import torch
 import cv2
@@ -26,6 +22,8 @@ print(f"Using device: {device}")
 TRT_LOGGER = trt.Logger(trt.Logger.INFO)
 TRT_LOGGER.min_severity = trt.Logger.Severity.INFO
 
+timing_cache = f"{current_directory}/timing.cache"
+
 def get_engine(onnx_file_path, engine_file_path="", precision='fp32'):
     """Load or build a TensorRT engine based on the ONNX model."""
     def build_engine():
@@ -34,19 +32,23 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32'):
                 builder.create_builder_config() as config, \
                 trt.OnnxParser(network, TRT_LOGGER) as parser, \
                 trt.Runtime(TRT_LOGGER) as runtime:
-
-            if precision == "fp16" and builder.platform_has_fast_fp16:
-                config.set_flag(trt.BuilderFlag.FP16)
-
+                    
             if not os.path.exists(onnx_file_path):
-                raise FileNotFoundError(f"[TRT_E] ONNX file {onnx_file_path} not found.")
+                raise FileNotFoundError(f"[TRT] ONNX file {onnx_file_path} not found.")
 
-            print(f"[TRT_E] Loading and parsing ONNX file: {onnx_file_path}")
+            print(f"[TRT] Loading and parsing ONNX file: {onnx_file_path}")
             with open(onnx_file_path, "rb") as model:
                 if not parser.parse(model.read()):
-                    raise RuntimeError("[TRT_E] Failed to parse the ONNX file.")
+                    raise RuntimeError("[TRT] Failed to parse the ONNX file.")
                 for error in range(parser.num_errors):
                     print(parser.get_error(error))
+                    
+            common.setup_timing_cache(config, timing_cache)
+            config.profiling_verbosity = trt.ProfilingVerbosity.DETAILED
+            config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, common.GiB(1))
+            config.set_flag(trt.BuilderFlag.SPARSE_WEIGHTS)
+            if precision == "fp16" and builder.platform_has_fast_fp16:
+                config.set_flag(trt.BuilderFlag.FP16)
 
             for i_idx in range(network.num_inputs):
                 print(f'[TRT_E] input({i_idx}) name: {network.get_input(i_idx).name}, shape= {network.get_input(i_idx).shape}')
@@ -56,7 +58,7 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32'):
                 
             plan = builder.build_serialized_network(network, config)
             engine = runtime.deserialize_cuda_engine(plan)
-
+            common.save_timing_cache(config, timing_cache)
             with open(engine_file_path, "wb") as f:
                 f.write(plan)
             return engine
@@ -70,28 +72,52 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32'):
     else:
         return build_engine()
 
+def preproc_xray(img):
+   """
+   Function to preprocess the image.
+   Includes tensor transformation, and normalization.
+
+   Parameters:
+      img (np.ndarray): Input image in 1 chanel format.
+
+   Returns:
+      torch.tensor : Preprocessed image tensor.
+   """
+   with torch.no_grad():
+      # Convert uint8 -> float32
+      img = torch.from_numpy(img).float()
+      # Normalize to [0, 1]
+      img /= 255.0
+      # Add batch dimension (H, W) -> (1, C, H, W)
+      img = img.unsqueeze(0).unsqueeze(0)
+   return np.array(img, dtype=np.float32, order="C")
+
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
 def main():
     iteration = 1000
     dur_time = 0
 
     # Input
-    img_path = os.path.join(current_directory, 'data', 'panda0.jpg')
-    origin_img = cv2.imread(img_path)  # Load image
-    input_image = preprocess_image(origin_img)  # Preprocess image
+    seg_model_input_size = 256
+    image_file_name = '0f45742c4d100eeee221f8853d79c9d4.png'
+    image_path = os.path.join(current_directory, 'samples', "Pneumothorax", 'TRUE', image_file_name)
+    origin_img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    if origin_img.shape != (seg_model_input_size, seg_model_input_size):
+        origin_img = cv2.resize(origin_img, dsize=(seg_model_input_size, seg_model_input_size))
+        
+    input_image = preproc_xray(origin_img)  # Preprocess image
     
     # Model and engine paths
     precision = "fp16"  # Choose 'fp32' or 'fp16'
-    model_name = "resnet18"
-    onnx_model_path = os.path.join(current_directory, 'onnx', f'{model_name}_{device.type}_modified.onnx')
-    engine_file_path = os.path.join(current_directory, 'engine', f'{model_name}_{precision}_modified.engine')
+    model_name = "UnetPlusPlus_timm-efficientnet-b3"
+    onnx_model_path = os.path.join(current_directory, 'onnx', f'{model_name}_{device.type}.onnx')
+    engine_file_path = os.path.join(current_directory, 'engine', f'{model_name}_{precision}.engine')
     os.makedirs(os.path.dirname(engine_file_path), exist_ok=True)
-    
+
     # Output shapes expected
-    output_shapes = [(1, 1000), (1, 512, 7, 7)]
-    
-    # load fc weight
-    weights_fc_w_path = os.path.join(current_directory, 'onnx', f'{model_name}_fc_weights.bin') 
-    weights_fc_w = np.fromfile(weights_fc_w_path, dtype=np.float32).reshape((1000, 512))
+    output_shapes = [(1,256, 256)]
 
     # Load or build the TensorRT engine and do inference
     with get_engine(onnx_model_path, engine_file_path, precision) as engine, \
@@ -114,50 +140,24 @@ def main():
         
     
     # Reshape and post-process the output
-    t_outputs1 = trt_outputs[0].reshape(output_shapes[0])
-    t_outputs2 = trt_outputs[1].reshape(output_shapes[1])
+    t_outputs = [output.reshape(shape) for output, shape in zip(trt_outputs, output_shapes)]
     
     # Results
     avg_time = dur_time / iteration
     print(f'[TRT_E] Average FPS: {1 / avg_time:.2f} [fps]')
     print(f'[TRT_E] Average inference time: {avg_time * 1000:.2f} [msec]')
 
-    max_tensor = torch.from_numpy(t_outputs1).max(dim=1)
-    max_value = max_tensor[0].cpu().numpy()[0]
-    max_index = max_tensor[1].cpu().numpy()[0]
-    print(f'[TRT_E] Resnet18 max index: {max_index}, value: {max_value}, class name: {class_name[max_index]}')
-    
-    # calculate grad cam
-    activations = torch.from_numpy(t_outputs2)
-    target_weights = torch.from_numpy(weights_fc_w[max_index])  # [512] <- [1000, 512]
-    
-    grad_cam = torch.zeros(activations.shape[2:])  # [7, 7]
-    for i, weight in enumerate(target_weights):  # [512]
-        grad_cam += weight * activations[0, i, :, :]  # [7, 7] += [1] * [7, 7]
+    threshold = 0.3
+    t_outputs = np.squeeze(np.array(t_outputs))
+    # 기준치 이상인 값만 255로, 나머지는 0으로 설정
+    pr_masks = np.where(sigmoid(t_outputs) >= threshold, 255, 0)
 
-    grad_cam = grad_cam.data.numpy()
-    grad_cam = np.maximum(grad_cam, 0)  # relu
-    grad_cam = grad_cam / (1e-7 + np.max(grad_cam))
+    save_path_mask = os.path.join(current_directory, 'save', f'{image_file_name}_mask.jpg')
+    os.makedirs(os.path.dirname(save_path_mask), exist_ok=True)
+    cv2.imwrite(save_path_mask, pr_masks)
 
-    # scale-up
-    grad_cam_224 = cv2.resize(grad_cam, (224, 224))
-
-    heatmap = cv2.applyColorMap(np.uint8(255 * grad_cam_224), cv2.COLORMAP_JET)
-    heatmap = np.float32(heatmap) / 255
-    bgr_img = np.float32(origin_img) / 255
-    mix_cam_ori = 0.5 * heatmap + 0.5 * bgr_img
-    mix_cam_ori = mix_cam_ori / (1e-7 + np.max(mix_cam_ori))
-    mix_cam_ori = np.uint8(255 * mix_cam_ori)
-    
-    f_name = os.path.basename(img_path).split(".")[0]
-    mix_results_path = os.path.join(current_directory, 'results', f'{f_name}_mix_cam_ori.jpg')
-    heatmap_results_path = os.path.join(current_directory, 'results', f'{f_name}_heatmap.jpg')
-    os.makedirs(os.path.dirname(mix_results_path), exist_ok=True)
-    cv2.imwrite(mix_results_path, mix_cam_ori)
-    cv2.imwrite(heatmap_results_path, np.uint8(255 * heatmap))
-    
     common.free_buffers(inputs, outputs, stream)
-    print("[TRT_E] Grad Cam Example succeeded!")
+    print("[TRT_E] Inference succeeded!")
 
 
 if __name__ == '__main__':
