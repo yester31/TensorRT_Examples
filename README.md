@@ -2,6 +2,12 @@
 
 All useful sample codes of TensorRT models using ONNX
 
+- to do later
+  - Performance Measurement
+  - Remove duplicate code
+  - refactoring
+  - Add a comment
+
 ## 0. Development Environment
 
 - Device
