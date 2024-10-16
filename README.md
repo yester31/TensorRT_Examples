@@ -2,6 +2,12 @@
 
 All useful sample codes of TensorRT models using ONNX
 
+## 0. Dependency
+
+- cuda 12.2
+- tensorrt 10.5.0
+- torch 2.4.1
+
 ## 1. Basic step
 
 1. Generation TensorRT Model by using ONNX  
