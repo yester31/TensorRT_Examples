@@ -52,8 +52,6 @@ def main():
         train_loader = DataLoader(dataset=subset_train_dataset, batch_size=batch_size, shuffle=True, num_workers=workers, pin_memory=True, sampler=None)
         class_count = len(train_dataset.classes)
 
-
-
         dataiter = iter(train_loader)
         images, labels = next(dataiter)
         calib_data = np.array(images)
