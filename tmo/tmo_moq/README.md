@@ -1,5 +1,7 @@
 # tmo_moq
 
+- no dynamic input shape
+
 ## How to Run
 
 1. prepare imagenet100 dataset
