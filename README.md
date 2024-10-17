@@ -40,7 +40,8 @@ All useful sample codes of TensorRT models using ONNX
 5. TensorRT Model Optimizer  
    [5.1 Explict Quantization (PTQ)](tmo/tmo_ptq/README.md)  
    [5.2 Explict Quantization (QAT)](tmo/tmo_qat/README.md)  
-   5.3 Sparsity (2:4 sparsity pattern)
+   [5.3 Explict Quantization (ONNX PTQ)](tmo/tmo_moq/README.md)  
+   5.4 Sparsity (2:4 sparsity pattern)
 
 ## 3. Advanced step
 

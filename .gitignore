@@ -13,6 +13,7 @@ build/
 onnx/
 engine/
 results/
+*.npy
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
