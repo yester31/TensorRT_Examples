@@ -22,7 +22,7 @@ python onnx_export.py
 
 ```
 mkdir calib_data
-// insert 3-500 calib datas for model
+// insert 3-500 calib datas for model (no need label)
 ```
 
 3. build tensorrt model and run
