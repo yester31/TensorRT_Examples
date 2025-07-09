@@ -2,20 +2,25 @@
 
 All useful sample codes of TensorRT models using ONNX
 
-- to do later
-  - Performance Measurement
-  - Remove duplicate code
-  - refactoring
-  - Add a comment
 
 ## 0. Development Environment
 
-- Device
-  - RTX4090
-- Dependency
-  - cuda 12.2
-  - tensorrt 10.5.0
-  - torch 2.4.1
+- RTX3060 (notebook)
+- WSL 
+- Ubuntu 22.04.5 LTS
+- cuda 12.8
+
+
+```
+conda create -n trte python=3.12 --yes 
+conda activate trte
+
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+pip install cuda-python
+pip install tensorrt
+pip install onnx
+
+```
 
 ## 1. Basic step
 
