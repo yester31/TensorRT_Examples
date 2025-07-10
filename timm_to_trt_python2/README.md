@@ -11,7 +11,6 @@ pip install torch
 pip install onnx
 pip install timm
 pip install polygraphy
-pip install numpy (2.0 below version)
 
 python onnx_export.py
 // a file 'resnet18_cuda.onnx' will be generated in onnx directory.

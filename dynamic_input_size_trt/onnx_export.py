@@ -5,7 +5,6 @@ import torch.onnx
 import onnx
 import os
 import timm
-from onnxsim import simplify
 
 current_file_path = os.path.abspath(__file__)
 current_directory = os.path.dirname(current_file_path)
@@ -59,18 +58,6 @@ def main():
     onnx.checker.check_model(onnx_model)  # Perform a validity check
     print("ONNX export successful!")
     
-    if False :
-        print(onnx.helper.printable_graph(onnx_model.graph))
-        sim_model_path = f"{current_directory}/onnx/{model_name}_{device.type}_sim.onnx"  # Define ONNX model export path
-        print("=> ONNX simplify start!")
-        sim_onnx_model, check = simplify(onnx_model)  # convert(simplify)
-        onnx.save(sim_onnx_model, sim_model_path)
-        print("=> ONNX simplify done!")
-
-        sim_model_path = onnx.load(sim_model_path)
-        onnx.checker.check_model(sim_onnx_model)
-        print("=> ONNX Model exported at ", sim_model_path)
-        print("=> sim ONNX Model check done!")
     
 
 # Run the main function

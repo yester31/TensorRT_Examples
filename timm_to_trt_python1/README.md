@@ -10,7 +10,7 @@ pip install onnx
 pip install timm
 pip install cuda-python
 pip install tensorrt
-pip install onnx-simplifier
+pip install opencv-python
 
 python onnx_export.py
 // a file 'resnet18_cuda.onnx' will be generated in onnx directory.

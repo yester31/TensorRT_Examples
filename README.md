@@ -67,4 +67,5 @@ pip install onnx
 
 ## 4. reference
 
-- [TensorRT-Github](https://github.com/NVIDIA/TensorRT)
+- [TensorRT](https://github.com/NVIDIA/TensorRT)
+- [TensorRT-Model-Optimizer](https://github.com/NVIDIA/TensorRT-Model-Optimizer)
