@@ -4,6 +4,7 @@ calibration_data/
 imagenet100/
 imagenet100.zip
 checkpoint/
+checkpoints/
 train_progress/
 compare_array/
 ml-depth-pro/

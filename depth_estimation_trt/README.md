@@ -10,15 +10,17 @@ cd ml-depth-pro
 conda create -n depth-pro -y python=3.9
 conda activate depth-pro
 pip install -e .
+
+cd ..
 source get_pretrained_models.sh   # Files will be downloaded to `checkpoints` directory.
+pip install onnx
+pip install opencv-python
 python infer.py
 ```
 
 2. generate .onnx from timm model
 
 ```
-cd ..
-pip install onnx
 pip install cuda-python
 pip install tensorrt
 

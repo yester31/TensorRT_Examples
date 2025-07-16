@@ -14,7 +14,7 @@ current_directory = os.path.dirname(os.path.abspath(__file__))
 # Load model and preprocessing transform
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
-model, transform = depth_pro.create_model_and_transforms(device=device)
+model, transform = depth_pro.create_model_and_transforms(device=device, precision=torch.half,)
 model.eval()
 print((model.img_size, model.img_size))
 

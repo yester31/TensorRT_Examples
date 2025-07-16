@@ -78,6 +78,7 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32', dynamic_in
             common.save_timing_cache(config, timing_cache)
             with open(engine_file_path, "wb") as f:
                 f.write(plan)
+            print(f'[TRT_E] engine build done!')
             return engine
 
     print(f"[TRT] Engine file path: {engine_file_path}")
@@ -119,7 +120,7 @@ def preprocess_image(img, dtype=np.float32):
    return np.array(tensor_resized.cpu(), dtype=dtype, order="C")
 
 def main():
-    iteration = 1000
+    iteration = 100
     dur_time = 0
 
     # Input
@@ -159,9 +160,11 @@ def main():
         
         context.set_input_shape('input', batch_images.shape)
         
-        # Warm-up        
-        common.do_inference(context, engine=engine, bindings=bindings, inputs=inputs, outputs=outputs, stream=stream)
-        
+        # Warm-up      
+        for i in range(10):  
+            common.do_inference(context, engine=engine, bindings=bindings, inputs=inputs, outputs=outputs, stream=stream)
+            torch.cuda.synchronize()
+
         # Inference loop
         for i in range(iteration):
             begin = time.time()
@@ -184,6 +187,7 @@ def main():
     print(f'[TRT] Average inference time: {avg_time * 1000:.2f} [msec]')
 
     f_px = 0.5 * W / torch.tan(0.5 * torch.deg2rad(fov_deg.to(torch.float)))
+    print(f'[TRT] focal_length : {f_px}') # tensor([2938.7341])
 
     inverse_depth = canonical_inverse_depth * (W / f_px)
     inverse_depth = nn.functional.interpolate(
@@ -191,7 +195,6 @@ def main():
     )
     depth = 1.0 / torch.clamp(inverse_depth, min=1e-4, max=1e4)
     
-    print(f_px) # tensor([2938.7341])
     depth = depth.squeeze()
     activation_map = np.array(depth)
     activation_map = (activation_map - np.min(activation_map)) / np.max(activation_map)
