@@ -62,8 +62,7 @@ pip install onnx
 8. Instance Segmentation
 9. Semantic Segmentation
 10. Depth Estimation  
-     [10.1 Depth Pro](depth_estimation_trt/README.md) (
-    "It is under repair due to an accuracy issue.")
+     [10.1 Depth Pro](depth_estimation_trt/README.md)
 
 ## 4. reference
 

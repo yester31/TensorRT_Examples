@@ -17,6 +17,7 @@ from torchvision.transforms import (
 )
 
 from PIL import Image
+from matplotlib import pyplot as plt
 
 import cv2
 import os
@@ -120,7 +121,7 @@ def preprocess_image(img, dtype=np.float32):
    return np.array(tensor_resized.cpu(), dtype=dtype, order="C")
 
 def main():
-    iteration = 100
+    iteration = 20
     dur_time = 0
 
     # Input
@@ -194,17 +195,40 @@ def main():
         inverse_depth, size=(H, W), mode='bilinear', align_corners=False
     )
     depth = 1.0 / torch.clamp(inverse_depth, min=1e-4, max=1e4)
-    
-    depth = depth.squeeze()
-    activation_map = np.array(depth)
-    activation_map = (activation_map - np.min(activation_map)) / np.max(activation_map)
-    heat_map = cv2.applyColorMap(np.uint8(255 * activation_map), cv2.COLORMAP_JET) # hw -> hwc
-    
-    # 샘플 결과 출력 및 저장
-    save_path = os.path.join(current_directory, 'save', f'{os.path.splitext(image_file_name)[0]}_depth_TRT.jpg')
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    cv2.imwrite(save_path, heat_map)
-    
+    depth = depth.numpy().squeeze()
+    inverse_depth = 1 / depth
+
+    # post process
+    if 0 : # prev version 
+        activation_map = (inverse_depth - np.min(inverse_depth)) / np.max(inverse_depth)
+        heat_map = cv2.applyColorMap(np.uint8(255 * activation_map), cv2.COLORMAP_JET) # hw -> hwc
+        
+        # 샘플 결과 출력 및 저장
+        save_path = os.path.join(current_directory, 'save', f'{os.path.splitext(image_file_name)[0]}_depth_TRT.jpg')
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        cv2.imwrite(save_path, heat_map)
+
+    else : # original ml-pro 
+        # Visualize inverse depth instead of depth, clipped to [0.1m;250m] range for better visualization.
+        max_invdepth_vizu = min(inverse_depth.max(), 1 / 0.1)
+        min_invdepth_vizu = max(1 / 250, inverse_depth.min())
+        inverse_depth_normalized = (inverse_depth - min_invdepth_vizu) / (
+            max_invdepth_vizu - min_invdepth_vizu
+        )
+        # Save as color-mapped "turbo" jpg image.
+        cmap = plt.get_cmap("turbo")
+        color_depth = (cmap(inverse_depth_normalized)[..., :3] * 255).astype(np.uint8)
+
+        # 샘플 결과 출력 및 저장
+        save_path = os.path.join(current_directory, 'save', f'{os.path.splitext(image_file_name)[0]}_depth_TRT_ori.jpg')
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        Image.fromarray(color_depth).save(
+            save_path, format="JPEG", quality=90
+        )
+
+        output_file_npz = os.path.join(current_directory, 'save', os.path.splitext(image_file_name)[0])
+        np.savez_compressed(output_file_npz, depth=depth)
+
     common.free_buffers(inputs, outputs, stream)
 
 
