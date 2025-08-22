@@ -10,16 +10,25 @@ All useful sample codes of TensorRT models using ONNX
 - Ubuntu 22.04.5 LTS
 - cuda 12.8
 
-
+conda deactivate 
+conda env remove -n trte -y 
 ```
-conda create -n trte python=3.12 --yes 
+conda create -n trte python=3.11 --yes 
 conda activate trte
 
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
-pip install cuda-python
-pip install tensorrt
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu129
+pip install cuda-python==12.9.2
+pip install tensorrt-cu12
 pip install onnx
+pip install opencv-python
+pip install timm
+pip install matplotlib
 
+pip install -U "nvidia-modelopt[all]"
+
+# Check installation 
+python -c "import modelopt; print(modelopt.__version__)"
+python -c "import modelopt.torch.quantization.extensions as ext; ext.precompile()"
 ```
 
 ## 1. Basic step
@@ -43,6 +52,7 @@ pip install onnx
    4.2 Generating a TensorRT model with a custom plugin and ONNX
 
 5. TensorRT Model Optimizer  
+   [5.0 Train Base Model (resnet18)](tmo/base_model/README.md)  
    [5.1 Explict Quantization (PTQ)](tmo/tmo_ptq/README.md)  
    [5.2 Explict Quantization (QAT)](tmo/tmo_qat/README.md)  
    [5.3 Explict Quantization (ONNX PTQ)](tmo/tmo_moq/README.md)  
