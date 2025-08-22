@@ -1,8 +1,10 @@
 # by yhpark 2024-10-15
+# by yhpark 2025-8-22
 # TensorRT Model Optimization PTQ example
 import os
 import sys
 sys.path.insert(1, os.path.join(sys.path[0], "../.."))
+import torchvision.transforms as transforms
 
 import tensorrt as trt
 import torch
@@ -13,21 +15,15 @@ import time
 import common
 from common import *
 from utils import *
+import json
+import copy
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "base_model")))
+import dataset
 
-current_file_path = os.path.abspath(__file__)
-current_directory = os.path.dirname(current_file_path)
-print(f"current file path: {current_file_path}")
-print(f"current directory: {current_directory}")
-
-# Global Variables
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print(f"Using device: {device}")
-
+CUR_DIR = os.path.dirname(os.path.abspath(__file__))
+DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 TRT_LOGGER = trt.Logger(trt.Logger.INFO)
-TRT_LOGGER.min_severity = trt.Logger.Severity.INFO
-
-timing_cache = f"{current_directory}/timing.cache"
 
 def get_engine(onnx_file_path, engine_file_path="", precision='fp32'):
     """Load or build a TensorRT engine based on the ONNX model."""
@@ -40,14 +36,10 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32'):
                     
             if not os.path.exists(onnx_file_path):
                 raise FileNotFoundError(f"[TRT] ONNX file {onnx_file_path} not found.")
-
             print(f"[TRT] Loading and parsing ONNX file: {onnx_file_path}")
-            with open(onnx_file_path, "rb") as model:
-                if not parser.parse(model.read()):
-                    raise RuntimeError("[TRT] Failed to parse the ONNX file.")
-                for error in range(parser.num_errors):
-                    print(parser.get_error(error))
-                    
+            parser.parse_from_file(onnx_file_path)
+
+            timing_cache = f"{CUR_DIR}/engine/timing.cache"
             common.setup_timing_cache(config, timing_cache)
             config.profiling_verbosity = trt.ProfilingVerbosity.DETAILED
             config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, common.GiB(1))
@@ -56,13 +48,14 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32'):
             if precision == "fp16":
                 if builder.platform_has_fast_fp16:
                     config.set_flag(trt.BuilderFlag.FP16)
-                print("Using FP16 mode.")
+                    print("Using FP16 mode.")
             elif precision == "int8" :
                 if builder.platform_has_fast_fp16:
                     config.set_flag(trt.BuilderFlag.FP16)
+                    print("Using FP16 mode.")
                 if builder.platform_has_fast_int8 :
                     config.set_flag(trt.BuilderFlag.INT8)
-                print("Using INT8 mode.")
+                    print("Using INT8 mode.")
             elif precision == "fp32":
                 print("Using FP32 mode.")
             else:
@@ -90,67 +83,132 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32'):
         with open(engine_file_path, "rb") as f, trt.Runtime(TRT_LOGGER) as runtime:
             return runtime.deserialize_cuda_engine(f.read())
     else:
-        return build_engine()
+        print(f'[MDET] Build engine ({engine_file_path})')
+        begin = time.time()
+        engine = build_engine()
+        build_time = time.time() - begin
+        print(f'[MDET] Engine build done! ({show_build_time(build_time)})')  
+        return engine
 
+def show_build_time(build_time):      
+    if build_time < 60:
+        build_time_str = f"{build_time:.2f} sec"
+    elif build_time < 3600:
+        minutes = int(build_time // 60)
+        seconds = build_time % 60
+        build_time_str = f"{minutes} min {seconds:.2f} sec"
+    else:
+        hours = int(build_time // 3600)
+        minutes = int((build_time % 3600) // 60)
+        seconds = build_time % 60
+        build_time_str = f"{hours} hr {minutes} min {seconds:.2f} sec"
+    return build_time_str
 
-def preprocess_image2(image):
-    # BGR -> RGB
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  
-    # resize 256x256
-    image_resized = cv2.resize(image, (256, 256), interpolation=cv2.INTER_LINEAR)
-    # center crop 224x224 
-    h, w, _ = image_resized.shape
-    top = (h - 224) // 2
-    left = (w - 224) // 2
-    image_cropped = image_resized[top:top + 224, left:left + 224]
-    # HWC -> CHW, [0, 1]
-    image_tensor = image_cropped.transpose(2, 0, 1) / 255.0
-    
-    # normalize
-    mean = np.array([0.485, 0.456, 0.406]).reshape(3, 1, 1)
-    std = np.array([0.229, 0.224, 0.225]).reshape(3, 1, 1)
-    image_normalized = (image_tensor - mean) / std
-    
+def transform_cv(image):    
+    # 1) BGR -> RGB
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+    # 2) Resize (256, keep aspect ratio → shorter side 256)
+    h, w, _ = image.shape
+    if h < w:
+        new_h, new_w = 256, int(w * 256 / h)
+    else:
+        new_w, new_h = 256, int(h * 256 / w)
+    image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+
+    # 3) CenterCrop 224
+    h, w, _ = image.shape
+    start_x = (w - 224) // 2
+    start_y = (h - 224) // 2
+    image = image[start_y:start_y+224, start_x:start_x+224]
+
+    # 4) ToTensor (HWC -> CHW, 0~1 float)
+    image = image.astype(np.float32) / 255.0
+    image = np.transpose(image, (2, 0, 1))  # (H,W,C) -> (C,H,W)
+    tensor = torch.from_numpy(image)
+
+    # 5) Normalize
+    mean = torch.tensor([0.485, 0.456, 0.406]).view(3,1,1)
+    std  = torch.tensor([0.229, 0.224, 0.225]).view(3,1,1)
+    tensor = (tensor - mean) / std
+
     # Add batch dimension (C, H, W) -> (1, C, H, W)
-    image_normalized = np.expand_dims(image_normalized, axis=0)
+    tensor = np.expand_dims(tensor, axis=0)
     # Return as NumPy array (C-order)   
-    return np.array(image_normalized, dtype=np.float32, order="C")
+    return np.array(tensor, dtype=np.float32, order="C")
+
+def test_model_topk_fps_trt(test_loader, output_shapes, context, engine, inputs, outputs, bindings, stream):
+    top1_correct = 0
+    top5_correct = 0
+    total = 0
+
+    # Warm-up
+    batch = next(iter(test_loader))
+    dummy_input = torch.randn((batch["image"].shape), requires_grad=False)  # Create a dummy input
+    dummy_input = np.asarray(dummy_input.detach().cpu(), dtype=np.float32, order="C")
+    for _ in range(10):
+        common.do_inference(context, engine=engine, bindings=bindings, inputs=inputs, outputs=outputs, stream=stream)    
+    torch.cuda.synchronize()
+
+    # FPS
+    elapsed = 0
+    with torch.no_grad():
+        for batch in test_loader:
+            images = batch["image"]
+            images = np.asarray(images.detach().cpu(), dtype=np.float32, order="C")
+            inputs[0].host = images
+            labels = batch["label"]
+
+            # Forward pass
+            torch.cuda.synchronize()
+            begin = time.perf_counter()
+            trt_outputs = common.do_inference(context, engine=engine, bindings=bindings, inputs=inputs, outputs=outputs, stream=stream) 
+            torch.cuda.synchronize()
+            elapsed += time.perf_counter() - begin
+
+            t_outputs = [output.reshape(shape) for output, shape in zip(trt_outputs, output_shapes)]
+            t_outputs = torch.from_numpy(t_outputs[0])
+            _, pred = t_outputs.topk(5, dim=1, largest=True, sorted=True)
+
+            total += labels.size(0)
+            top1_correct += (pred[:, 0] == labels).sum().item()
+            top5_correct += pred.eq(labels.view(-1,1).expand_as(pred)).sum().item()
+
+    top1_acc = top1_correct / total
+    top5_acc = top5_correct / total
+
+    fps = total / elapsed
+
+    print(f"[TRT_E] Total Count: {total}")
+    print(f"[TRT_E] Test Top-1 Accuracy: {top1_acc*100:.2f}%")
+    print(f"[TRT_E] Test Top-{5} Accuracy: {top5_acc*100:.2f}%")
+    print(f"[TRT_E] Inference FPS: {fps:.2f} samples/sec")
+
+    return top1_acc, top5_acc, fps
 
 
 def main():
-    iteration = 1000
-    dur_time = 0
 
     # Input
-    img_path = f'{current_directory}/../datasets/imagenet100/val/n01824575/ILSVRC2012_val_00002263.JPEG'
-    img = cv2.imread(img_path)  # Load image
-    input_image = preprocess_image2(img)  # Preprocess image
-    
-    Labels_path = f'{current_directory}/../datasets/imagenet100/Labels.json'
-    Labels = read_json(Labels_path)
-    Labels_path2 = f'{current_directory}/../datasets/imagenet100/class_to_idx.json'
-    Labels2 = read_json(Labels_path2)
-    
+    img_path = f'{CUR_DIR}/../base_model/test/output2.png'
+    image = cv2.imread(img_path)  # Load image
+    input_image = transform_cv(image)  # Preprocess image
+    with open(f"{CUR_DIR}/../base_model/dataset/label2text.json", "r", encoding="utf-8") as f:
+        label2text = json.load(f)
+
+    batch_size = 1
+    transform_test = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),])
+    test_loader = dataset.dataset_load(batch_size, transform_test, 'test')
+
     # Model and engine paths
-    ptq_onnx = True # whether this onnx from ptq_onnx_export.py
     model_name = "resnet18"
-    if ptq_onnx:
-        precision = "int8" 
-        onnx_model_path = os.path.join(current_directory, 'onnx', f'{model_name}_{device.type}_ptq_bf.onnx') # batch folding before ptq
-        engine_file_path = os.path.join(current_directory, 'engine', f'{model_name}_{precision}_ptq_bf.engine')
-        onnx_model_path = os.path.join(current_directory, 'onnx', f'{model_name}_{device.type}_ptq.onnx') # no batch folding 
-        engine_file_path = os.path.join(current_directory, 'engine', f'{model_name}_{precision}_ptq.engine')
-        # Average FPS: 5622.21 [fps] <- int8 PTQ(quantize) w batch folding
-        # Average FPS: 4847.31 [fps] <- int8 PTQ(quantize) wo batch folding
-        onnx_model_path = os.path.join(current_directory, 'onnx', f'{model_name}_{device.type}_ptq_auto_bf.onnx')
-        engine_file_path = os.path.join(current_directory, 'engine', f'{model_name}_{precision}_ptq_auto_bf.engine')
-        # Average FPS: 5574.66 [fps] <- int8 PTQ(auto_quantize) w batch folding
-    else :
-        precision = "fp16" # Choose 'fp32' or 'fp16'
-        onnx_model_path = os.path.join(current_directory, 'onnx', f'{model_name}_{device.type}_bf.onnx')
-        engine_file_path = os.path.join(current_directory, 'engine', f'{model_name}_{precision}_bf.engine')
-        # Average FPS: 4886.81 [fps] <- f16 w batch folding
-        # Average FPS: 4887.49 [fps] <- f16 wo batch folding
+    precision = "int8" # Choose 'int8' or 'fp32' or 'fp16'
+    onnx_model_path = os.path.join(CUR_DIR, 'onnx', f'{model_name}_ptq.onnx')
+    engine_file_path = os.path.join(CUR_DIR, 'engine', f'{model_name}_{precision}_ptq.engine')
     os.makedirs(os.path.dirname(engine_file_path), exist_ok=True)
 
     # Output shapes expected
@@ -161,39 +219,25 @@ def main():
             engine.create_execution_context() as context:
 
         inputs, outputs, bindings, stream = common.allocate_buffers(engine)
+        
+        top1_acc, top5_acc, fps = test_model_topk_fps_trt(test_loader, output_shapes, context, engine, inputs, outputs, bindings, stream)
+
         inputs[0].host = input_image
-        
-        # Warm-up       
-        for i in range(50):
-            common.do_inference(context, engine=engine, bindings=bindings, inputs=inputs, outputs=outputs, stream=stream)
-        
-        # Inference loop
-        for i in range(iteration):
-            begin = time.time()
-            trt_outputs = common.do_inference(context, engine=engine, bindings=bindings, inputs=inputs, outputs=outputs, stream=stream)
-            torch.cuda.synchronize()
-            dur_time += time.time() - begin
+        torch.cuda.synchronize()
+        trt_outputs = common.do_inference(context, engine=engine, bindings=bindings, inputs=inputs, outputs=outputs, stream=stream)
 
-        print(f'[TRT_E] {iteration} iterations time: {dur_time:.4f} [sec]')
-        
-    
-    # Reshape and post-process the output
-    t_outputs = [output.reshape(shape) for output, shape in zip(trt_outputs, output_shapes)]
+        # Reshape and post-process the output
+        t_outputs = [output.reshape(shape) for output, shape in zip(trt_outputs, output_shapes)]
+        t_outputs = torch.from_numpy(t_outputs[0])
 
-    # Results
-    avg_time = dur_time / iteration
-    print(f'[TRT_E] precision: {precision}')
-    print(f'[TRT_E] Average FPS: {1 / avg_time:.2f} [fps]')
-    print(f'[TRT_E] Average inference time: {avg_time * 1000:.2f} [msec]')
+        # Results
+        max_tensor = t_outputs.max(dim=1)
+        max_value = max_tensor[0].cpu().numpy()[0]
+        max_index = max_tensor[1].cpu().numpy()[0]
+        print(f'[TRT_E] max value: {max_value}')
+        print(f'[TRT_E] max index: {max_index}')
+        print(f'[TRT_E] max label: {label2text[str(max_index)]}')
 
-    max_tensor = torch.from_numpy(t_outputs[0]).max(dim=1)
-    max_value = max_tensor[0].cpu().numpy()[0]
-    max_index = max_tensor[1].cpu().numpy()[0]
-    
-    matching_keys = [key for key, value in Labels2.items() if value == max_index]
-    Labels[matching_keys[0]]
-    print(f'[TRT_E] Resnet18 max index: {max_index}, value: {max_value}, class name: {matching_keys[0]}, {Labels[matching_keys[0]]}')
-    print(f'[TRT_E] image path : {img_path}')
     common.free_buffers(inputs, outputs, stream)
     print("[TRT_E] Inference succeeded!")
 
