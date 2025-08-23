@@ -1,18 +1,26 @@
-# tmo_ptq
+# Post-training quantization (PTQ)
 
 ## How to Run
 
 1. train base model with imagenet100 dataset
 - [Train Base Model (resnet18)](tmo/base_model/README.md)
 
-2. Post-training quantization (PTQ)
-
+2. Post-training quantization (PTQ) and export ptq onnx
 ```
+python onnx_export_ptq.py
+```
+- no train 
+- calibration
 
-python ptq_onnx_export.py
+3. generate tensorrt model
+```
 python onnx2trt.py
-// a file 'resnet18_int8_ptq_bf.engine' will be generated in engine directory.
 ```
+- int8 ptq (Explicit)
+- Gpu Mem: 124M
+- [TRT_E] Test Top-1 Accuracy: 84.20%
+- [TRT_E] Test Top-5 Accuracy: 97.06%
+- [TRT_E] Inference FPS: 510.33 samples/sec
 
 ## Reference
 
