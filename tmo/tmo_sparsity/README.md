@@ -1,34 +1,27 @@
-# tmo_sparsity
+# NVIDIA 2:4 Sparsity
 
 ## How to Run
 
-1. prepare imagenet100 dataset
+1. train base model with imagenet100 dataset
+- [Train Base Model (resnet18)](tmo/base_model/README.md)
 
-```
-cd ..
-mkdir datasets
+2. Sparsify and export sparsity onnx
+    ```
+    python onnx_export_sparsity.py
+    ```
+- fine tuning 
+- sparsity_mode: "sparsegpt" or "sparse_magnitude"
 
-// download imagenet100 dataset from kaggle (see below)
-```
-
-2. train resnet18 with imagenet100 dataset
-
-```
-cd base_model
-python train.py
-// 'best_model.pth' will be generated in checkpoint directory.
-```
-
-3. generate sparsity model & export onnx file
-
-```
-cd tmo_sparsity
-python sparsity_onnx_export.py
-python onnx2trt.py
-// a file 'resnet18_fp16_sparsity_bf.engine' will be generated in engine directory.
-```
+3. generate tensorrt model
+    ```
+    python onnx2trt.py
+    ```
+- fp16 sparse_magnitude
+- Gpu Mem: 138M
+- [TRT_E] Test Top-1 Accuracy: 83.28%
+- [TRT_E] Test Top-5 Accuracy: 96.72%
+- [TRT_E] Inference FPS: 681.17 samples/sec
 
 ## Reference
 
 - [TensorRT-Model-Optimizer](https://github.com/NVIDIA/TensorRT-Model-Optimizer)
-- [imagenet100](https://www.kaggle.com/datasets/ambityga/imagenet100)
