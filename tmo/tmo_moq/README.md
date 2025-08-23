@@ -1,44 +1,30 @@
-# tmo_moq
-
-- no dynamic input shape
+# ONNX Post-training quantization
 
 ## How to Run
 
-1. prepare imagenet100 dataset
+1. train base model with imagenet100 dataset
+    - [Train Base Model (resnet18)](tmo/base_model/README.md)
 
-```
-cd ..
-mkdir datasets
+2. export input onnx
+    - [Export input onnx](tmo/base_trt/README.md)
 
-// download imagenet100 dataset from kaggle (see below)
-```
+3. ONNX Post-training quantization and export moq onnx
+    ```
+    python onnx_export_moq.py
+    ```
+    - no train 
+    - calibration
 
-2. train resnet18 with imagenet100 dataset
-
-```
-cd base_model
-python train.py
-// 'best_model.pth' will be generated in checkpoint directory.
-```
-
-3. generate onnx file
-
-```
-cd tmo_moq
-python onnx_export.py
-// a file 'resnet18_cuda_bf.onnx' will be generated in onnx directory.
-```
-
-4. ONNX Post-training quantization (PTQ)
-
-```
-python moq_onnx_export.py
-// a file 'resnet18_moq.onnx' will be generated in onnx directory.
-python onnx2trt.py
-// a file 'resnet18_int8_moq.engine' will be generated in engine directory.
-```
+4. generate tensorrt model
+    ```
+    python onnx2trt.py
+    ```
+- int8 onnx ptq (Explicit)
+- Gpu Mem: 124M
+- [TRT_E] Test Top-1 Accuracy: 84.50%
+- [TRT_E] Test Top-5 Accuracy: 97.00%
+- [TRT_E] Inference FPS: 544.22 samples/sec
 
 ## Reference
 
 - [TensorRT-Model-Optimizer](https://github.com/NVIDIA/TensorRT-Model-Optimizer)
-- [imagenet100](https://www.kaggle.com/datasets/ambityga/imagenet100)
