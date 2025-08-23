@@ -53,15 +53,15 @@ python -c "import modelopt.torch.quantization.extensions as ext; ext.precompile(
 
 5. TensorRT Model Optimizer  
    [5.0 Train Base Model (resnet18)](tmo/base_model/README.md)  
-   [5.1 Explict Quantization (PTQ)](tmo/tmo_ptq/README.md)  
-   [5.2 Explict Quantization (QAT)](tmo/tmo_qat/README.md)  
-   [5.3 Explict Quantization (ONNX PTQ)](tmo/tmo_moq/README.md)  
-   [5.4 Implicit Quantization (TensorRT PTQ)](trt_quantization/README.md)  
-   [5.5 Sparsity (2:4 sparsity pattern)](tmo/tmo_sparsity/README.md)  
-   5.6 Pruning  
-   5.7 Distillation  
-   5.8 NAS(Neural Architecture Search)  
-   5.9 Combinations multi-method
+   [5.1 Base TensorRT (fp16)](tmo/base_trt/README.md)  
+   [5.2 Explict Quantization (PTQ)](tmo/tmo_ptq/README.md)  
+   [5.3 Explict Quantization (QAT)](tmo/tmo_qat/README.md)  
+   [5.4 Explict Quantization (ONNX PTQ)](tmo/tmo_moq/README.md)  
+   [5.5 Implicit Quantization (TensorRT PTQ)](trt_quantization/README.md)  
+   [5.6 Sparsity (2:4 sparsity)](tmo/tmo_sparsity/README.md)  
+   [5.7 Pruning](tmo/tmo_pruning/README.md)  
+   [5.8 NAS(Neural Architecture Search)](tmo/tmo_nas/README.md)  
+   5.9 Multiple Optimizations Techniques(Pruning + Quantization)
 
 ## 3. Advanced step
 
