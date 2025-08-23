@@ -4,8 +4,7 @@
 import torch
 import torchvision.transforms as transforms
 from PIL import Image
-from utils import *
-from dataset import *
+from utils_tmo import *
 set_random_seed()
 
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -43,7 +42,7 @@ def main():
 
     top1_acc, top5_acc, fps = test_model_topk_fps(model, test_loader, DEVICE, k=5, use_half=use_half)
 
-    img_path = f'{CUR_DIR}/test/output2.png'
+    img_path = f'{CUR_DIR}/test/test_11.png'
     image = cv2.imread(img_path)  # Load image
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     image = Image.fromarray(image)

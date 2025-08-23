@@ -6,9 +6,9 @@ import torch.nn as nn
 import torch.optim as optim
 import torchvision.transforms as transforms
 import os
+import multiprocessing
 import wandb
-from utils import *
-from dataset import *
+from utils_tmo import *
 torch._inductor.config.max_autotune_gemm = False
 
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -141,6 +141,9 @@ def main():
             "top1_acc": top1_acc, 
             "top5_acc": top5_acc,})
         wandb_log.finish()
+        
+    # generate test data
+    gen_test_data(12)
 
 # Execute the main function
 if __name__ == "__main__":

@@ -5,7 +5,6 @@ import torch
 import cv2
 import numpy as np
 import os 
-import multiprocessing
 import json
 
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
