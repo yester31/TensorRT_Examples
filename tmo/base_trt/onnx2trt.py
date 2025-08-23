@@ -3,9 +3,8 @@
 # TensorRT Model Optimization PTQ example
 import os
 import sys
-sys.path.insert(1, os.path.join(sys.path[0], "../.."))
+sys.path.insert(1, os.path.join(sys.path[0], "..", ".."))
 import torchvision.transforms as transforms
-
 import tensorrt as trt
 import torch
 import cv2
@@ -14,18 +13,16 @@ import numpy as np
 import time
 import common
 from common import *
-from utils import *
 import json
-import copy
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "base_model")))
-import dataset
+sys.path.insert(1, os.path.join(sys.path[0], ".."))
+from base_model.utils_tmo import *
+set_random_seed()
 
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-TRT_LOGGER = trt.Logger(trt.Logger.INFO)
 
-def get_engine(onnx_file_path, engine_file_path="", precision='fp32'):
+def get_engine(onnx_file_path, engine_file_path="", precision='fp32' ,TRT_LOGGER = trt.Logger(trt.Logger.INFO)):
     """Load or build a TensorRT engine based on the ONNX model."""
     def build_engine():
         with trt.Builder(TRT_LOGGER) as builder, \
@@ -44,7 +41,7 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32'):
             config.profiling_verbosity = trt.ProfilingVerbosity.DETAILED
             config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, common.GiB(1))
             config.set_flag(trt.BuilderFlag.SPARSE_WEIGHTS)
-            
+
             if precision == "fp16":
                 if builder.platform_has_fast_fp16:
                     config.set_flag(trt.BuilderFlag.FP16)
@@ -185,11 +182,10 @@ def test_model_topk_fps_trt(test_loader, output_shapes, context, engine, inputs,
 
     return top1_acc, top5_acc, fps
 
-
 def main():
 
     # Input
-    img_path = f'{CUR_DIR}/../base_model/test/output2.png'
+    img_path = f'{CUR_DIR}/../base_model/test/test_11.png'
     image = cv2.imread(img_path)  # Load image
     input_image = transform_cv(image)  # Preprocess image
     with open(f"{CUR_DIR}/../base_model/dataset/label2text.json", "r", encoding="utf-8") as f:
@@ -201,7 +197,7 @@ def main():
         transforms.CenterCrop(224),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),])
-    test_loader = dataset.dataset_load(batch_size, transform_test, 'test')
+    test_loader = dataset_load(batch_size, transform_test, 'test')
 
     # Model and engine paths
     model_name = "resnet18"

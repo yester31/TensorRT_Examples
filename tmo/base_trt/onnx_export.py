@@ -4,10 +4,10 @@ import torch
 import onnx
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "base_model")))
-import utils
+sys.path.insert(1, os.path.join(sys.path[0], ".."))
+from base_model.utils_tmo import *
+set_random_seed()
 
-utils.set_random_seed()
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(f"[TRT_E] using device: {DEVICE}")
@@ -26,10 +26,10 @@ def main():
     # Set up model
     model_path = f'{CUR_DIR}/../base_model/checkpoint/b256_lr7.0e-04_we3_d0.3/best_model.pth'
     print(f"[TRT_E] load model ({model_path})")
-    dropout, dropout_p = utils.check_and_parse(model_path)
-    model = utils.load_model(num_classes, dropout_p).to(DEVICE)
+    dropout, dropout_p = check_and_parse(model_path)
+    model = load_model(num_classes, dropout_p).to(DEVICE)
     checkpoint = torch.load(model_path, map_location=DEVICE)
-    checkpoint = utils.remove_prefix(checkpoint, "_orig_mod.")
+    checkpoint = remove_prefix(checkpoint, "_orig_mod.")
     model.load_state_dict(checkpoint)
     model = model.eval()
 
