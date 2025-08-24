@@ -133,7 +133,7 @@ def transform_cv(image):
     # Return as NumPy array (C-order)   
     return np.array(tensor, dtype=np.float32, order="C")
 
-def test_model_topk_fps_trt(test_loader, output_shapes, context, engine, inputs, outputs, bindings, stream):
+def test_model_topk_trt(test_loader, output_shapes, context, engine, inputs, outputs, bindings, stream):
     top1_correct = 0
     top5_correct = 0
     total = 0
@@ -146,8 +146,6 @@ def test_model_topk_fps_trt(test_loader, output_shapes, context, engine, inputs,
         common.do_inference(context, engine=engine, bindings=bindings, inputs=inputs, outputs=outputs, stream=stream)    
     torch.cuda.synchronize()
 
-    # FPS
-    elapsed = 0
     with torch.no_grad():
         for batch in test_loader:
             images = batch["image"]
@@ -156,11 +154,7 @@ def test_model_topk_fps_trt(test_loader, output_shapes, context, engine, inputs,
             labels = batch["label"]
 
             # Forward pass
-            torch.cuda.synchronize()
-            begin = time.perf_counter()
             trt_outputs = common.do_inference(context, engine=engine, bindings=bindings, inputs=inputs, outputs=outputs, stream=stream) 
-            torch.cuda.synchronize()
-            elapsed += time.perf_counter() - begin
 
             t_outputs = [output.reshape(shape) for output, shape in zip(trt_outputs, output_shapes)]
             t_outputs = torch.from_numpy(t_outputs[0])
@@ -173,14 +167,32 @@ def test_model_topk_fps_trt(test_loader, output_shapes, context, engine, inputs,
     top1_acc = top1_correct / total
     top5_acc = top5_correct / total
 
-    fps = total / elapsed
 
     print(f"[TRT_E] Total Count: {total}")
     print(f"[TRT_E] Test Top-1 Accuracy: {top1_acc*100:.2f}%")
     print(f"[TRT_E] Test Top-{5} Accuracy: {top5_acc*100:.2f}%")
-    print(f"[TRT_E] Inference FPS: {fps:.2f} samples/sec")
 
-    return top1_acc, top5_acc, fps
+    return top1_acc, top5_acc
+
+def get_inference_fps(batch_size, context, engine, bindings, inputs, outputs, stream):
+    # CUDA Events
+    err, start_event = cudart.cudaEventCreate()
+    err, end_event = cudart.cudaEventCreate()
+    # Measure
+    iterations = 10000
+    cudart.cudaEventRecord(start_event, 0)
+    for _ in range(iterations):
+        trt_outputs = common.do_inference(context, engine=engine, bindings=bindings, inputs=inputs, outputs=outputs, stream=stream)            
+    cudart.cudaEventRecord(end_event, 0)
+    cudart.cudaEventSynchronize(end_event)
+    err, elapsed_time_ms = cudart.cudaEventElapsedTime(start_event, end_event)
+    elapsed_time_sec = elapsed_time_ms / 1000.0
+    fps = (iterations * batch_size) / (elapsed_time_sec)
+    avg_time = elapsed_time_ms / (iterations * batch_size)
+    # Results
+    print(f'[TRT_E] {iterations} iterations time: {elapsed_time_sec:.4f} [sec]')
+    print(f'[TRT_E] Average FPS: {fps:.2f} [fps]')
+    print(f'[TRT_E] Average inference time: {avg_time:.2f} [msec]')
 
 def main():
 
@@ -215,10 +227,13 @@ def main():
 
         inputs, outputs, bindings, stream = common.allocate_buffers(engine)
         
-        top1_acc, top5_acc, fps = test_model_topk_fps_trt(test_loader, output_shapes, context, engine, inputs, outputs, bindings, stream)
+        top1_acc, top5_acc = test_model_topk_trt(test_loader, output_shapes, context, engine, inputs, outputs, bindings, stream)
+        
+        get_inference_fps(batch_size, context, engine, bindings, inputs, outputs, stream)
 
+        # run test image 
         inputs[0].host = input_image
-        trt_outputs = common.do_inference(context, engine=engine, bindings=bindings, inputs=inputs, outputs=outputs, stream=stream)
+        trt_outputs = common.do_inference(context, engine=engine, bindings=bindings, inputs=inputs, outputs=outputs, stream=stream)            
 
         # Reshape and post-process the output
         t_outputs = [output.reshape(shape) for output, shape in zip(trt_outputs, output_shapes)]
