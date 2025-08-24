@@ -153,7 +153,7 @@ def test_model_topk(model, test_loader, device, k=5):
     print(f"Test Top-{k} Accuracy: {top5_acc*100:.2f}%")
     return top1_acc, top5_acc
 
-def test_model_topk_fps(model, test_loader, device, k=5, use_half=False):
+def test_model_topk(model, test_loader, device, k=5, use_half=False):
     model.eval()
     if use_half:
         model.half()  # Convert model to FP16
@@ -172,8 +172,6 @@ def test_model_topk_fps(model, test_loader, device, k=5, use_half=False):
         outputs = model(dummy_input)
     torch.cuda.synchronize()
 
-    # FPS
-    elapsed = 0
     with torch.no_grad():
         for batch in test_loader:
             images = batch["image"].to(device)
@@ -183,10 +181,7 @@ def test_model_topk_fps(model, test_loader, device, k=5, use_half=False):
                 images = images.half()  # FP16 
 
             # Forward pass
-            begin = time.perf_counter()
             outputs = model(images)
-            torch.cuda.synchronize()
-            elapsed += time.perf_counter() - begin
             _, pred = outputs.topk(k, dim=1, largest=True, sorted=True)
 
             total += labels.size(0)
@@ -196,13 +191,10 @@ def test_model_topk_fps(model, test_loader, device, k=5, use_half=False):
     top1_acc = top1_correct / total
     top5_acc = top5_correct / total
 
-    fps = total / elapsed
-
     print(f"[TRT_E] Test Top-1 Accuracy: {top1_acc*100:.2f}%")
     print(f"[TRT_E] Test Top-{k} Accuracy: {top5_acc*100:.2f}%")
-    print(f"[TRT_E] Inference FPS: {fps:.2f} samples/sec (use_half={use_half})")
 
-    return top1_acc, top5_acc, fps
+    return top1_acc, top5_acc
 
 # Scheduler: Warmup + CosineAnnealing
 class WarmupCosineLR:

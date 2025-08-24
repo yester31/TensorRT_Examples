@@ -23,4 +23,6 @@
 - Gpu Mem: 286M
 - [TRT_E] Test Top-1 Accuracy: 84.58%
 - [TRT_E] Test Top-5 Accuracy: 97.20%
-- [TRT_E] Inference FPS: 250.71 samples/sec (use_half=True)
+- [TRT_E] 10000 iterations time: 24.6143 [sec]
+- [TRT_E] Average FPS: 406.27 [fps]
+- [TRT_E] Average inference time: 2.46 [msec]

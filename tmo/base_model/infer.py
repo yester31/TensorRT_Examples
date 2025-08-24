@@ -40,7 +40,7 @@ def main():
     checkpoint = remove_prefix(checkpoint, "_orig_mod.")
     model.load_state_dict(checkpoint)
 
-    top1_acc, top5_acc, fps = test_model_topk_fps(model, test_loader, DEVICE, k=5, use_half=use_half)
+    top1_acc, top5_acc = test_model_topk(model, test_loader, DEVICE, k=5, use_half=use_half)
 
     img_path = f'{CUR_DIR}/test/test_11.png'
     image = cv2.imread(img_path)  # Load image
@@ -51,8 +51,22 @@ def main():
 
     if use_half:
         image = image.half()  # FP16 
-    with torch.no_grad():
-        outputs = model(image)
+
+    iterations = 10000
+    torch.cuda.synchronize()
+    start = time.perf_counter()
+    for _ in range(iterations):
+        with torch.no_grad():
+            outputs = model(image)
+    torch.cuda.synchronize()
+    end = time.perf_counter()
+    elapsed_time = end - start
+    # Results
+    print(f'[TRT_E] {iterations} iterations time: {elapsed_time:.4f} [sec]')
+    fps = (iterations * batch_size) / elapsed_time
+    avg_time = elapsed_time/(iterations * batch_size)
+    print(f'[TRT_E] Average FPS: {fps:.2f} [fps]')
+    print(f'[TRT_E] Average inference time: {avg_time * 1000:.2f} [msec]')
 
     max_tensor = outputs.max(dim=1)
     max_value = max_tensor[0].cpu().numpy()[0]
