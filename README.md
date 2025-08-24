@@ -61,7 +61,99 @@ python -c "import modelopt.torch.quantization.extensions as ext; ext.precompile(
    [5.6 Sparsity (2:4 sparsity)](tmo/tmo_sparsity/README.md)  
    [5.7 Pruning](tmo/tmo_pruning/README.md)  
    [5.8 NAS(Neural Architecture Search)](tmo/tmo_nas/README.md)  
-   5.9 Multiple Optimizations Techniques(Pruning + Quantization)
+   5.9 Multiple Optimizations Techniques      
+      5.9.1 (Pruning + Sparsity)   
+      5.9.2 (Pruning + Sparsity + Quantization(QAT))   
+      5.9.3 (NAS + Sparsity)   
+      5.9.4 (NAS + Sparsity + Quantization(QAT))   
+
+
+<table border="1" cellspacing="0" cellpadding="4">
+  <thead>
+    <tr>
+      <th>Framework</th>
+      <th>PyTorch</th>
+      <th>TensorRT</th>
+      <th>TensorRT</th>
+      <th>TensorRT</th>
+      <th>TensorRT</th>
+      <th>TensorRT</th>
+      <th>TensorRT</th>
+    </tr>
+  </thead>
+  <tbody>
+      <tr>
+      <td>Opti Technique</td>
+      <td>-</td>
+      <td>-</td>
+      <td>onnx ptq</td>
+      <td>tmo ptq</td>
+      <td>tmo qat</td>
+      <td>tmo sparsity</td>
+      <td>tmo pruning (flops 80%)</td>
+    </tr>
+    <tr>
+      <td>Precision</td>
+      <td>fp16</td>
+      <td>fp16</td>
+      <td>int8</td>
+      <td>int8</td>
+      <td>int8</td>
+      <td>fp16</td>
+      <td>fp16</td>
+    </tr>
+    <tr>
+      <td>Top-1 Acc [%]</td>
+      <td>84.58</td>
+      <td>84.54</td>
+      <td>84.5</td>
+      <td>84.2</td>
+      <td>84.42</td>
+      <td>83.28</td>
+      <td>82.76</td>
+    </tr>
+    <tr>
+      <td>Top-5 Acc [%]</td>
+      <td>97.2</td>
+      <td>97.2</td>
+      <td>97</td>
+      <td>97.06</td>
+      <td>97.1</td>
+      <td>96.72</td>
+      <td>96.42</td>
+    </tr>
+    <tr>
+      <td>FPS [Frame/sec]</td>
+      <td>406.27</td>
+      <td>1463.45</td>
+      <td>1897.46</td>
+      <td>1542.34</td>
+      <td>1572.81</td>
+      <td>1483.85</td>
+      <td>1573.2</td>
+    </tr>
+    <tr>
+      <td>Avg Latency [ms]</td>
+      <td>2.46</td>
+      <td>0.68</td>
+      <td>0.53</td>
+      <td>0.65</td>
+      <td>0.64</td>
+      <td>0.67</td>
+      <td>0.64</td>
+    </tr>
+    <tr>
+      <td>GPU Mem [MB]</td>
+      <td>286</td>
+      <td>138</td>
+      <td>124</td>
+      <td>124</td>
+      <td>138</td>
+      <td>138</td>
+      <td>130</td>
+    </tr>
+  </tbody>
+</table>
 
 ## 3. Advanced step
 
