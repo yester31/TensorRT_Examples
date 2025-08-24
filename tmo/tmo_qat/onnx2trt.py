@@ -15,7 +15,7 @@ import json
 
 sys.path.insert(1, os.path.join(sys.path[0], ".."))
 from base_model.utils_tmo import *
-from base_trt.onnx2trt import get_engine, transform_cv, test_model_topk_fps_trt
+from base_trt.onnx2trt import get_engine, transform_cv, test_model_topk_trt, get_inference_fps
 
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -54,11 +54,12 @@ def main():
 
         inputs, outputs, bindings, stream = common.allocate_buffers(engine)
         
-        top1_acc, top5_acc, fps = test_model_topk_fps_trt(test_loader, output_shapes, context, engine, inputs, outputs, bindings, stream)
+        top1_acc, top5_acc = test_model_topk_trt(test_loader, output_shapes, context, engine, inputs, outputs, bindings, stream)
+        get_inference_fps(batch_size, context, engine, bindings, inputs, outputs, stream)
 
+        # run test image 
         inputs[0].host = input_image
-        torch.cuda.synchronize()
-        trt_outputs = common.do_inference(context, engine=engine, bindings=bindings, inputs=inputs, outputs=outputs, stream=stream)
+        trt_outputs = common.do_inference(context, engine=engine, bindings=bindings, inputs=inputs, outputs=outputs, stream=stream) 
 
         # Reshape and post-process the output
         t_outputs = [output.reshape(shape) for output, shape in zip(trt_outputs, output_shapes)]
