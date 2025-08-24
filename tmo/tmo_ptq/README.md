@@ -20,8 +20,9 @@ python onnx2trt.py
 - Gpu Mem: 124M
 - [TRT_E] Test Top-1 Accuracy: 84.20%
 - [TRT_E] Test Top-5 Accuracy: 97.06%
-- [TRT_E] Inference FPS: 510.33 samples/sec
-
+- [TRT_E] 10000 iterations time: 6.4837 [sec]
+- [TRT_E] Average FPS: 1542.34 [fps]
+- [TRT_E] Average inference time: 0.65 [msec]
 ## Reference
 
 - [TensorRT-Model-Optimizer](https://github.com/NVIDIA/TensorRT-Model-Optimizer)
