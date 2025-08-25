@@ -1,35 +1,27 @@
-#  by yhpark 2024-10-19
-# implicit quantization (PTQ) TensorRT example
+# by yhpark 2025-8-25
+# TensorRT Implicit PTQ example
 import os
 import sys
-sys.path.insert(1, os.path.join(sys.path[0], ".."))
+sys.path.insert(1, os.path.join(sys.path[0], "../.."))
+import torchvision.transforms as transforms
 
 import tensorrt as trt
 import torch
 import cv2
-import os
-import numpy as np
-import time
 import common
 from common import *
-from utils import *
+import json
 from calibrator import EngineCalibrator
 
-current_file_path = os.path.abspath(__file__)
-current_directory = os.path.dirname(current_file_path)
-print(f"current file path: {current_file_path}")
-print(f"current directory: {current_directory}")
+sys.path.insert(1, os.path.join(sys.path[0], ".."))
+from base_model.utils_tmo import *
+from base_trt.onnx2trt import transform_cv, test_model_topk_trt, get_inference_fps, show_build_time
 
-# Global Variables
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print(f"Using device: {device}")
-
+CUR_DIR = os.path.dirname(os.path.abspath(__file__))
+DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 TRT_LOGGER = trt.Logger(trt.Logger.INFO)
-TRT_LOGGER.min_severity = trt.Logger.Severity.INFO
 
-timing_cache = f"{current_directory}/timing.cache"
-
-def get_engine(onnx_file_path, engine_file_path="", precision='fp32'):
+def get_engine(onnx_file_path, engine_file_path="", precision='fp32', TRT_LOGGER = trt.Logger(trt.Logger.INFO)):
     """Load or build a TensorRT engine based on the ONNX model."""
     def build_engine():
         with trt.Builder(TRT_LOGGER) as builder, \
@@ -40,18 +32,15 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32'):
                     
             if not os.path.exists(onnx_file_path):
                 raise FileNotFoundError(f"[TRT] ONNX file {onnx_file_path} not found.")
-
             print(f"[TRT] Loading and parsing ONNX file: {onnx_file_path}")
-            with open(onnx_file_path, "rb") as model:
-                if not parser.parse(model.read()):
-                    raise RuntimeError("[TRT] Failed to parse the ONNX file.")
-                for error in range(parser.num_errors):
-                    print(parser.get_error(error))
+            parser.parse_from_file(onnx_file_path)
                     
+            timing_cache = f"{CUR_DIR}/engine/timing.cache"
             common.setup_timing_cache(config, timing_cache)
             config.profiling_verbosity = trt.ProfilingVerbosity.DETAILED
             config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, common.GiB(1))
             config.set_flag(trt.BuilderFlag.SPARSE_WEIGHTS)
+
             if precision == "fp16" and builder.platform_has_fast_fp16:
                 config.set_flag(trt.BuilderFlag.FP16)
             elif precision == "int8":
@@ -59,8 +48,9 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32'):
                 config.set_flag(trt.BuilderFlag.INT8)
                 print("Using INT8 mode.")
                 print("Using TensorRT implict PTQ mode.")
-                calib_cache = f"{current_directory}/engine/cache_table.table"
-                calib_data_dir = f"{current_directory}/calib_data"
+
+                calib_cache = f"{CUR_DIR}/engine/cache_table.table"
+                calib_data_path = f"{CUR_DIR}/calib_datas/calib_data.npy"
                 if os.path.exists(calib_cache):
                     os.remove(calib_cache)
                 config.int8_calibrator = EngineCalibrator(calib_cache)
@@ -69,9 +59,13 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32'):
                     batch_size = inputs[0].shape[0]
                     calib_shape = inputs[0].shape
                     calib_dtype = trt.nptype(inputs[0].dtype)
-                    config.int8_calibrator.set_calibrator(
-                        batch_size, calib_shape, calib_dtype, calib_data_dir
-                    )
+                    config.int8_calibrator.set_calibrator(batch_size, calib_shape, calib_dtype, calib_data_path)
+            elif precision == "fp32":
+                print("Using FP32 mode.")
+            else:
+                raise NotImplementedError(
+                    f"Currently hasn't been implemented: {precision}."
+                )
 
             for i_idx in range(network.num_inputs):
                 print(f'[TRT_E] input({i_idx}) name: {network.get_input(i_idx).name}, shape= {network.get_input(i_idx).shape}')
@@ -93,60 +87,66 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32'):
         with open(engine_file_path, "rb") as f, trt.Runtime(TRT_LOGGER) as runtime:
             return runtime.deserialize_cuda_engine(f.read())
     else:
-        return build_engine()
+        print(f'[MDET] Build engine ({engine_file_path})')
+        begin = time.time()
+        engine = build_engine()
+        build_time = time.time() - begin
+        print(f'[MDET] Engine build done! ({show_build_time(build_time)})')  
+        return engine
+
 
 def main():
-    iteration = 1000
-    dur_time = 0
 
     # Input
-    img_path = os.path.join(current_directory, 'data', 'panda0.jpg')
-    img = cv2.imread(img_path)  # Load image
-    input_image = preprocess_image2(img)  # Preprocess image
-    
+    img_path = f'{CUR_DIR}/../base_model/test/test_11.png'
+    image = cv2.imread(img_path)  # Load image
+    input_image = transform_cv(image)  # Preprocess image
+    with open(f"{CUR_DIR}/../base_model/dataset/label2text.json", "r", encoding="utf-8") as f:
+        label2text = json.load(f)
+
+    batch_size = 1
+    transform_test = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),])
+    test_loader = dataset_load(batch_size, transform_test, 'test')
+
     # Model and engine paths
-    precision = "int8"  # Choose 'fp32' or 'fp16'
-    # Average FPS: 6602.73 [fps] <- int8
     model_name = "resnet18"
-    onnx_model_path = os.path.join(current_directory, 'onnx', f'{model_name}_{device.type}.onnx')
-    engine_file_path = os.path.join(current_directory, 'engine', f'{model_name}_{precision}.engine')
+    precision = "int8" # Choose 'int8' or 'fp32' or 'fp16'
+    onnx_model_path = f"{CUR_DIR}/../base_trt/onnx/{model_name}.onnx"
+    engine_file_path = os.path.join(CUR_DIR, 'engine', f'{model_name}_{precision}_trt_ptq.engine')
     os.makedirs(os.path.dirname(engine_file_path), exist_ok=True)
 
     # Output shapes expected
-    output_shapes = [(1, 1000)]
+    output_shapes = [(1, 100)]
 
     # Load or build the TensorRT engine and do inference
     with get_engine(onnx_model_path, engine_file_path, precision) as engine, \
             engine.create_execution_context() as context:
 
         inputs, outputs, bindings, stream = common.allocate_buffers(engine)
+        
+        top1_acc, top5_acc = test_model_topk_trt(test_loader, output_shapes, context, engine, inputs, outputs, bindings, stream)
+        get_inference_fps(batch_size, context, engine, bindings, inputs, outputs, stream)
+
+        # run test image 
         inputs[0].host = input_image
-        
-        # Warm-up        
-        common.do_inference(context, engine=engine, bindings=bindings, inputs=inputs, outputs=outputs, stream=stream)
-        
-        # Inference loop
-        for i in range(iteration):
-            begin = time.time()
-            trt_outputs = common.do_inference(context, engine=engine, bindings=bindings, inputs=inputs, outputs=outputs, stream=stream)
-            torch.cuda.synchronize()
-            dur_time += time.time() - begin
+        trt_outputs = common.do_inference(context, engine=engine, bindings=bindings, inputs=inputs, outputs=outputs, stream=stream) 
 
-        print(f'[TRT_E] {iteration} iterations time: {dur_time:.4f} [sec]')
-        
-    
-    # Reshape and post-process the output
-    t_outputs = [output.reshape(shape) for output, shape in zip(trt_outputs, output_shapes)]
+        # Reshape and post-process the output
+        t_outputs = [output.reshape(shape) for output, shape in zip(trt_outputs, output_shapes)]
+        t_outputs = torch.from_numpy(t_outputs[0])
 
-    # Results
-    avg_time = dur_time / iteration
-    print(f'[TRT_E] Average FPS: {1 / avg_time:.2f} [fps]')
-    print(f'[TRT_E] Average inference time: {avg_time * 1000:.2f} [msec]')
+        # Results
+        max_tensor = t_outputs.max(dim=1)
+        max_value = max_tensor[0].cpu().numpy()[0]
+        max_index = max_tensor[1].cpu().numpy()[0]
+        print(f'[TRT_E] max value: {max_value}')
+        print(f'[TRT_E] max index: {max_index}')
+        print(f'[TRT_E] max label: {label2text[str(max_index)]}')
 
-    max_tensor = torch.from_numpy(t_outputs[0]).max(dim=1)
-    max_value = max_tensor[0].cpu().numpy()[0]
-    max_index = max_tensor[1].cpu().numpy()[0]
-    print(f'[TRT_E] Resnet18 max index: {max_index}, value: {max_value}, class name: {class_name[max_index]}')
     common.free_buffers(inputs, outputs, stream)
     print("[TRT_E] Inference succeeded!")
 
