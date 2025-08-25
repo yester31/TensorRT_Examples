@@ -22,7 +22,7 @@ set_random_seed()
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-def get_engine(onnx_file_path, engine_file_path="", precision='fp32' ,TRT_LOGGER = trt.Logger(trt.Logger.INFO)):
+def get_engine(onnx_file_path, engine_file_path="", precision='fp32', TRT_LOGGER = trt.Logger(trt.Logger.INFO)):
     """Load or build a TensorRT engine based on the ONNX model."""
     def build_engine():
         with trt.Builder(TRT_LOGGER) as builder, \
