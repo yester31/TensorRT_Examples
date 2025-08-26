@@ -175,6 +175,7 @@ python -c "import modelopt.torch.quantization.extensions as ext; ext.precompile(
   [4.1 U-2-Net(Sky Segmentation)](semantic_segmentation/README.md)
   [4.2 BEN2(Background Erase Network)](semantic_segmentation2/README.md)
   [4.3 MODNet](semantic_segmentation3/README.md)
+  [4.4 ormbg(Open Remove Background Model)](semantic_segmentation4/README.md)
 5. Depth Estimation  
   [5.1 Depth Pro](depth_estimation_trt/README.md)
 
