@@ -172,7 +172,8 @@ python -c "import modelopt.torch.quantization.extensions as ext; ext.precompile(
   [2.1 yolo11](object_detection1/README.md)
 3. Instance Segmentation
 4. Semantic Segmentation   
-  [4.1 U-2-Net](semantic_segmentation/README.md)
+  [4.1 U-2-Net(Sky Segmentation)](semantic_segmentation/README.md)
+  [4.2 BEN2(Background Erase Network)](semantic_segmentation2/README.md)
 5. Depth Estimation  
   [5.1 Depth Pro](depth_estimation_trt/README.md)
 

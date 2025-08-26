@@ -1,9 +1,8 @@
 # by yhpark 2025-8-25
-# Semantic Segmentation
+# Semantic Segmentation (u-2-net skyseg)
 import os
 import sys
 sys.path.insert(1, os.path.join(sys.path[0], ".."))
-import torchvision.transforms as transforms
 import tensorrt as trt
 import torch
 import cv2
@@ -12,7 +11,6 @@ import numpy as np
 import time
 import common
 from common import *
-import json
 
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -176,7 +174,7 @@ def main():
     # Reshape and post-process the output
     t_outputs = [output.reshape(shape) for output, shape in zip(trt_outputs, output_shapes)]
 
-    # postprocess (NCHW->NHWC, RGB->BGR, *255, ROUND, uint8)
+    # postprocess (CHW->HW, *255, ROUND, uint8, resize)
     t_result = np.squeeze(t_outputs[0])
     min_value = np.min(t_result)
     max_value = np.max(t_result)
