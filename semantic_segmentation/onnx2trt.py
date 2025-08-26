@@ -183,7 +183,7 @@ def main():
     t_result = cv2.resize(t_result, (w, h))
 
     filename = os.path.splitext(os.path.basename(img_path))[0]
-    save_path = os.path.join(CUR_DIR, 'data', f'{filename}_trt.jpg')
+    save_path = os.path.join(CUR_DIR, 'save', f'{filename}_trt.jpg')
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     cv2.imwrite(save_path, t_result)
 

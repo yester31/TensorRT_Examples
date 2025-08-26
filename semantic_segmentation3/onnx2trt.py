@@ -214,7 +214,7 @@ def main():
     # Reshape and post-process the output
     t_outputs = [output.reshape(shape) for output, shape in zip(trt_outputs, output_shapes)]
 
-    # postprocess (HW->HW, resize, *255, uint8)
+    # postprocess (CHW->HW, resize, *255, uint8)
     t_result = np.squeeze(t_outputs[0])
     mask = (t_result * 255.0).astype(np.uint8)
     mask = cv2.resize(mask, (w, h))
@@ -222,10 +222,10 @@ def main():
     foreground = cv2.bitwise_and(image, cv2.merge([mask, mask, mask]))
 
     filename = os.path.splitext(os.path.basename(img_path))[0]
-    save_path = os.path.join(CUR_DIR, 'data', f'{filename}_fg_{input_size}_trt2.png')
+    save_path = os.path.join(CUR_DIR, 'save', f'{filename}_fg_{input_size}_trt.png')
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     cv2.imwrite(save_path, foreground)
-    save_path = os.path.join(CUR_DIR, 'data', f'{filename}_mask_{input_size}_trt2.png')
+    save_path = os.path.join(CUR_DIR, 'save', f'{filename}_mask_{input_size}_trt.png')
     cv2.imwrite(save_path, mask)
 
     common.free_buffers(inputs, outputs, stream)
