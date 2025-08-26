@@ -21,7 +21,7 @@ def main():
     
     # save
     filename = os.path.splitext(os.path.basename(img_path))[0]
-    foreground.save(f"{CUR_DIR}/data/{filename}_pt.png")
+    foreground.save(f"{CUR_DIR}/save/{filename}_pt.png")
 
 if __name__ == '__main__':
     main()

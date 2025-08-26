@@ -93,13 +93,13 @@ def show_build_time(build_time):
         build_time_str = f"{hours} hr {minutes} min {seconds:.2f} sec"
     return build_time_str
 
-def transform_cv(image_, size):   
+def transform_cv(image_, ref_size):   
     image = image_.copy() 
     # 1) BGR -> RGB
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
     # 2) Resize (1024)
-    image = cv2.resize(image, (size, size), interpolation=cv2.INTER_LINEAR)
+    image = cv2.resize(image, (ref_size, ref_size), interpolation=cv2.INTER_LINEAR)
 
     # 4) ToTensor (HWC -> CHW, 0~1 float)
     image = image.astype(np.float32) / 255.0
@@ -142,7 +142,7 @@ def main():
     img_path = f'{CUR_DIR}/data/test_11.png'
     image = cv2.imread(img_path)  # Load image
     h, w, c = image.shape 
-    input_size = 512
+    input_size = 1024
     input_image = transform_cv(image, input_size)  # Preprocess image (1,3,1024,1024)
     batch_size = 1
 
@@ -171,23 +171,22 @@ def main():
     # Reshape and post-process the output
     t_outputs = [output.reshape(shape) for output, shape in zip(trt_outputs, output_shapes)]
 
-    # postprocess (HW->HW, resize, *255, uint8)
+    # postprocess (CHW->HW, resize, *255, uint8)
     t_result = np.squeeze(t_outputs[0])
-    t_result = t_result[0:int(input_size/2), 0:int(input_size/2)]
     t_result = cv2.resize(t_result, (w, h))
     min_value = np.min(t_result)
     max_value = np.max(t_result)
     t_result = (t_result - min_value) / (max_value - min_value)
     mask = (t_result * 255.0).astype(np.uint8)
-    mask = np.where(mask > 15, 255, 0).astype(np.uint8)
+    # mask = np.where(mask > 15, 255, 0).astype(np.uint8)
 
     foreground = cv2.bitwise_and(image, cv2.merge([mask, mask, mask]))
 
     filename = os.path.splitext(os.path.basename(img_path))[0]
-    save_path = os.path.join(CUR_DIR, 'data', f'{filename}_fg_{input_size}_trt.png')
+    save_path = os.path.join(CUR_DIR, 'save', f'{filename}_fg_{input_size}_trt.png')
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     cv2.imwrite(save_path, foreground)
-    save_path = os.path.join(CUR_DIR, 'data', f'{filename}_mask_{input_size}_trt.png')
+    save_path = os.path.join(CUR_DIR, 'save', f'{filename}_mask_{input_size}_trt.png')
     cv2.imwrite(save_path, mask)
 
     common.free_buffers(inputs, outputs, stream)

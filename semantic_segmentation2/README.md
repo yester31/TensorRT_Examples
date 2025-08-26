@@ -38,9 +38,14 @@
     ```
     python onnx2trt.py
     ```
-- [TRT_E] 100 iterations time: 3.6876 [sec]
-- [TRT_E] Average FPS: 27.12 [fps]
-- [TRT_E] Average inference time: 36.88 [msec]
+- input size : 512
+    - [TRT_E] 100 iterations time: 3.6876 [sec]
+    - [TRT_E] Average FPS: 27.12 [fps]
+    - [TRT_E] Average inference time: 36.88 [msec]
+- input size : 1024
+    - [TRT_E] 100 iterations time: 11.9791 [sec]
+    - [TRT_E] Average FPS: 8.35 [fps]
+    - [TRT_E] Average inference time: 119.79 [msec]
 
 
 - [BEN: Using Confidence-Guided Matting for Dichotomous Image Segmentation](https://arxiv.org/abs/2501.06230)
