@@ -34,37 +34,37 @@ python -c "import modelopt.torch.quantization.extensions as ext; ext.precompile(
 ## 1. TensorRT Model Conversion and Extension: A Practical Tutorial
 
 1. Generation TensorRT Model by using ONNX  
-   [1.1 TensorRT CPP API](timm_to_trt_cpp/README.md)  
-   [1.2 TensorRT Python API](timm_to_trt_python1/README.md)  
-   [1.3 Polygraphy](timm_to_trt_python2/README.md)
+   [1.1 TensorRT CPP API](practical_tutorial/timm_to_trt_cpp/README.md)  
+   [1.2 TensorRT Python API](practical_tutorial/timm_to_trt_python1/README.md)  
+   [1.3 Polygraphy](practical_tutorial/timm_to_trt_python2/README.md)
 
 2. Dynamic shapes for TensorRT  
-   [2.1 Dynamic batch](dynamic_batch_trt/README.md)  
-   [2.2 Dynamic input size](dynamic_input_size_trt/README.md)
+   [2.1 Dynamic batch](practical_tutorial/dynamic_batch_trt/README.md)  
+   [2.2 Dynamic input size](practical_tutorial/dynamic_input_size_trt/README.md)
 
 3. Custom Plugin  
-   [3.1 Adding a pre-processing layer by cuda](custom_layer/README.md)
+   [3.1 Adding a pre-processing layer by cuda](practical_tutorial/custom_layer/README.md)
 
 4. Modifying an ONNX graph by ONNX GraphSurgeon  
-   [4.1 Extracting a feature map of the last Conv for Grad-Cam](gradcam_trt/README.md)  
+   [4.1 Extracting a feature map of the last Conv for Grad-Cam](practical_tutorial/gradcam_trt/README.md)  
    4.2 Generating a TensorRT model with a custom plugin and ONNX
 
 ## 2. Advanced Optimization Techniques for TensorRT Inference
 
 1. Base model train & convert       
-   [1.1 Train Base Model (resnet18)](tmo/base_model/README.md)  
-   [1.2 Base TensorRT (fp16)](tmo/base_trt/README.md)  
+   [1.1 Train Base Model (resnet18)](optimization_techniques/base_model/README.md)  
+   [1.2 Base TensorRT (fp16)](optimization_techniques/base_trt/README.md)  
 2. Quantization     
-   [2.1 Explict Quantization (PTQ)](tmo/tmo_ptq/README.md)  
-   [2.2 Explict Quantization (QAT)](tmo/tmo_qat/README.md)  
-   [2.3 Explict Quantization (ONNX PTQ)](tmo/tmo_moq/README.md)  
-   [2.4 Implicit Quantization (TensorRT PTQ)](tmo/trt_ptq/README.md) 
+   [2.1 Explict Quantization (PTQ)](optimization_techniques/tmo_ptq/README.md)  
+   [2.2 Explict Quantization (QAT)](optimization_techniques/tmo_qat/README.md)  
+   [2.3 Explict Quantization (ONNX PTQ)](optimization_techniques/tmo_moq/README.md)  
+   [2.4 Implicit Quantization (TensorRT PTQ)](optimization_techniques/trt_ptq/README.md) 
 3. Sparsity     
-   [3.1 Sparsity (2:4 sparsity)](tmo/tmo_sparsity/README.md)  
+   [3.1 Sparsity (2:4 sparsity)](optimization_techniques/tmo_sparsity/README.md)  
 4. Pruning     
-   [4.1 Pruning](tmo/tmo_pruning/README.md)  
+   [4.1 Pruning](optimization_techniques/tmo_pruning/README.md)  
 5. NAS  
-   [5.1 NAS(work in progress...)](tmo/tmo_nas/README.md)  
+   [5.1 NAS(work in progress...)](optimization_techniques/tmo_nas/README.md)  
 6. Multiple Optimizations      
   6.1 (Pruning + Sparsity)   
   6.2 (Pruning + Sparsity + Quantization(QAT))   
@@ -167,21 +167,21 @@ python -c "import modelopt.torch.quantization.extensions as ext; ext.precompile(
 ## 3. Conversion of General Deep Learning Models to TensorRT
 
 1. Super Resolution  
-  [1.1 Real-ESRGAN](super_resolution_trt/README.md)
+  [1.1 Real-ESRGAN](general_models/Real-ESRGAN/README.md)
 2. Object Detection  
-  [2.1 yolo11](object_detection1/README.md)
+  [2.1 Yolo11](general_models/Yolo11/README.md)
 3. Instance Segmentation
 4. Semantic Segmentation   
-  [4.1 U-2-Net(Sky Segmentation)](semantic_segmentation/README.md)  
-  [4.2 BEN2(Remove Background)](semantic_segmentation2/README.md)  
-  [4.3 MODNet(Portrait Matting)](semantic_segmentation3/README.md)  
-  [4.4 ormbg(Remove Background for images with humans)](semantic_segmentation4/README.md)
+  [4.1 U-2-Net(Sky Segmentation)](general_models/U-2-Net/README.md)  
+  [4.2 BEN2(Remove Background)](general_models/BEN2/README.md)  
+  [4.3 MODNet(Portrait Matting)](general_models/MODNet/README.md)  
+  [4.4 ORMBG(Remove Background for images with humans)](general_models/ORMBG/README.md)
 5. Panoptic Segmentation   
-  [5.1 EoMT](panoptic_segmentation/README.md)
-
+  [5.1 EoMT](general_models/panoptic_segmentation/README.md)
 6. Depth Estimation  
-  [6.1 Depth Pro(Sharp Monocular Metric Depth)](depth_estimation_trt/README.md)
-
+  [6.1 Depth-Pro(Sharp Monocular Metric Depth)](general_models/Depth-Pro/README.md)
+7. Gaze Target Estimation
+  [7.1 Gaze-LLE](general_models/Gaze-LLE/README.md)
 
 
 ## 4. reference
