@@ -177,7 +177,7 @@ python -c "import modelopt.torch.quantization.extensions as ext; ext.precompile(
   [4.3 MODNet(Portrait Matting)](general_models/MODNet/README.md)  
   [4.4 ORMBG(Remove Background for images with humans)](general_models/ORMBG/README.md)
 5. Panoptic Segmentation   
-  [5.1 EoMT](general_models/panoptic_segmentation/README.md)
+  [5.1 EoMT](general_models/EoMT/README.md)
 6. Depth Estimation  
   [6.1 Depth-Pro(Sharp Monocular Metric Depth)](general_models/Depth-Pro/README.md)
 7. Gaze Target Estimation
