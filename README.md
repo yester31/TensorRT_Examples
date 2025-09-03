@@ -8,28 +8,29 @@ All useful sample codes of TensorRT models using ONNX
 - RTX3060 (notebook)
 - WSL 
 - Ubuntu 22.04.5 LTS
-- cuda 12.8
+- cuda 12.9
 
 conda deactivate 
 conda env remove -n trte -y 
-```
-conda create -n trte python=3.11 --yes 
-conda activate trte
+### Set up a virtual environment.
+  ```
+  conda create -n trte python=3.12 --yes 
+  conda activate trte
 
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu129
-pip install cuda-python==12.9.2
-pip install tensorrt-cu12
-pip install onnx
-pip install opencv-python
-pip install timm
-pip install matplotlib
+  pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu129
+  pip install cuda-python==12.9.2
+  pip install tensorrt-cu12
+  pip install -U "nvidia-modelopt[all]"
 
-pip install -U "nvidia-modelopt[all]"
+  # Check installation 
+  python -c "import modelopt; print(modelopt.__version__)"
+  python -c "import modelopt.torch.quantization.extensions as ext; ext.precompile()"
 
-# Check installation 
-python -c "import modelopt; print(modelopt.__version__)"
-python -c "import modelopt.torch.quantization.extensions as ext; ext.precompile()"
-```
+  pip install opencv-python
+  pip install timm
+  pip install matplotlib
+  pip install onnxsim
+  ```
 
 ## 1. TensorRT Model Conversion and Extension: A Practical Tutorial
 
@@ -170,6 +171,7 @@ python -c "import modelopt.torch.quantization.extensions as ext; ext.precompile(
   [1.1 Real-ESRGAN](general_models/Real-ESRGAN/README.md)
 2. Object Detection  
   [2.1 Yolo11](general_models/Yolo11/README.md)
+  [2.2 Yolov12(Face Detection)](general_models/Yolov12/README.md)
 3. Instance Segmentation
 4. Semantic Segmentation   
   [4.1 U-2-Net(Sky Segmentation)](general_models/U-2-Net/README.md)  
