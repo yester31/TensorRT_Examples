@@ -14,7 +14,7 @@ conda deactivate
 conda env remove -n trte -y 
 ### Set up a virtual environment.
   ```
-  conda create -n trte python=3.12 --yes 
+  conda create -n trte python=3.11 --yes 
   conda activate trte
 
   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu129
@@ -170,8 +170,9 @@ conda env remove -n trte -y
 1. Super Resolution  
   [1.1 Real-ESRGAN](general_models/Real-ESRGAN/README.md)
 2. Object Detection  
-  [2.1 Yolo11](general_models/Yolo11/README.md)
-  [2.2 Yolov12(Face Detection)](general_models/Yolov12/README.md)
+  [2.1 Yolo11](general_models/Yolo11/README.md)   
+  [2.2 Yolov12(Face Detection)](general_models/Yolov12/README.md)   
+  [2.3 D-FINE](general_models/D-FINE/README.md)   
 3. Instance Segmentation
 4. Semantic Segmentation   
   [4.1 U-2-Net(Sky Segmentation)](general_models/U-2-Net/README.md)  
@@ -179,11 +180,11 @@ conda env remove -n trte -y
   [4.3 MODNet(Portrait Matting)](general_models/MODNet/README.md)  
   [4.4 ORMBG(Remove Background for images with humans)](general_models/ORMBG/README.md)
 5. Panoptic Segmentation   
-  [5.1 EoMT](general_models/EoMT/README.md)
+  [5.1 EoMT](general_models/EoMT/README.md)   
 6. Depth Estimation  
-  [6.1 Depth-Pro(Sharp Monocular Metric Depth)](general_models/Depth-Pro/README.md)
-7. Gaze Target Estimation
-  [7.1 Gaze-LLE](general_models/Gaze-LLE/README.md)
+  [6.1 Depth-Pro(Sharp Monocular Metric Depth)](general_models/Depth-Pro/README.md)   
+7. Gaze Target Estimation   
+  [7.1 Gaze-LLE](general_models/Gaze-LLE/README.md)   
 
 
 ## 4. reference
