@@ -7,6 +7,7 @@ import os
 import numpy as np 
 import torchvision.transforms as transforms
 from calib_data import dataset_load
+from onnx_export import * 
 
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -35,20 +36,33 @@ def main():
     calib_data = np.load(calibration_data_path)
 
     model_name = "yolov12n-face"
-    onnx_sim = False # True or False
-    dynamic = False  # True or False 
+    onnx_sim = True # True or False
     model_name = f"{model_name}_{input_h}x{input_w}"
-    model_name = f"{model_name}_dynamic" if dynamic else model_name
-    model_name = f"{model_name}_sim" if onnx_sim else model_name
-
     input_onnx_path = f"{CUR_DIR}/onnx/{model_name}.onnx"
-    output_onnx_path = f"{CUR_DIR}/onnx/{model_name}_moq.onnx"
+    model_name = f"{model_name}_moq"
+    export_model_path = f"{CUR_DIR}/onnx/{model_name}.onnx"
     moq.quantize(
         onnx_path=input_onnx_path,
         quantize_mode="int8",
         calibration_data=calib_data,
         calibration_method="entropy",   # max, entropy, awq_clip, rtn_dq etc.
-        output_path=output_onnx_path,
+        output_path=export_model_path,
+    )
+
+    print("[MDET] Validate exported onnx model")
+    checker_onnx(export_model_path)
+    if onnx_sim :
+        export_model_sim_path = os.path.join(CUR_DIR, 'onnx', f'{model_name}_sim.onnx')
+        simplify_onnx(export_model_path, export_model_sim_path)
+
+    max_output_boxes = 300
+    iou_threshold = 0.7
+    score_threshold = 0.01
+    yolo_insert_nms(
+        path=export_model_sim_path,
+        score_threshold=score_threshold,
+        iou_threshold=iou_threshold,
+        max_output_boxes=max_output_boxes,
     )
 
 if __name__ == '__main__':

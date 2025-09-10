@@ -5,6 +5,9 @@ import torch.onnx
 import onnx
 import os 
 from onnxsim import simplify
+from infer import * 
+import onnx_graphsurgeon
+from collections import OrderedDict
 
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -46,6 +49,51 @@ def simplify_onnx(export_model_path, export_model_sim_path):
         print(f"[MDET] simplification failed: {e}")
     checker_onnx(export_model_sim_path)
 
+def yolo_insert_nms(
+    path, score_threshold=0.01, iou_threshold=0.7, max_output_boxes=300):
+    """
+    http://www.xavierdupre.fr/app/onnxcustom/helpsphinx/api/onnxops/onnx__EfficientNMS_TRT.html
+    https://huggingface.co/spaces/muttalib1326/Punjabi_Character_Detection/blob/3dd1e17054c64e5f6b2254278f96cfa2bf418cd4/utils/add_nms.py
+    """
+    onnx_model = onnx.load(path)
+    graph = onnx_graphsurgeon.import_onnx(onnx_model)
+    graph.toposort()
+    graph.fold_constants()
+    graph.cleanup()
+
+    topk = max_output_boxes
+    attrs = OrderedDict(
+        plugin_version="1",
+        background_class=-1,
+        max_output_boxes=topk,
+        score_threshold=score_threshold,
+        iou_threshold=iou_threshold,
+        score_activation=False,
+        box_coding=0,
+    )
+
+    outputs = [
+        onnx_graphsurgeon.Variable("num_dets", np.int32, [-1, 1]),
+        onnx_graphsurgeon.Variable("det_boxes", np.float32, [-1, topk, 4]),
+        onnx_graphsurgeon.Variable("det_scores", np.float32, [-1, topk]),
+        onnx_graphsurgeon.Variable("det_classes", np.int32, [-1, topk]),
+    ]
+
+    graph.layer(
+        op="EfficientNMS_TRT",
+        name="batched_nms",
+        inputs=[graph.outputs[0], graph.outputs[1]],
+        outputs=outputs,
+        attrs=attrs,
+    )
+
+    graph.outputs = outputs
+    graph.cleanup().toposort()
+
+    filename = os.path.splitext(os.path.basename(path))[0]
+    export_model_w_nms_path = f"{CUR_DIR}/onnx/{filename}_w_nms.onnx"
+    onnx.save(onnx_graphsurgeon.export_onnx(graph), export_model_w_nms_path)
+
 def main():
 
     print('[MDET] Load model')
@@ -54,35 +102,20 @@ def main():
 
     batch_size = 1
     input_h, input_w = 640, 640 
+    # load model
     model_name = "yolov12n-face"
-    model = YOLO(f'{CUR_DIR}/checkpoints/{model_name}.pt').model  # load a pretrained YOLOv8n detection model
+    checkpoint_path = f'{CUR_DIR}/checkpoints/{model_name}.pt'
+    class_count = 1
+    model = YOLOv12(checkpoint_path, class_count)
     model = model.eval()
 
-    dynamo = False   # Fail... (False only)
     onnx_sim = True # True or False
-    dynamic = False  # True or False 
     model_name = f"{model_name}_{input_h}x{input_w}"
-    model_name = f"{model_name}_dynamic" if dynamic else model_name
-    model_name = f"{model_name}_dynamo" if dynamo else model_name
     export_model_path = os.path.join(save_path, f'{model_name}.onnx')
     print('[MDET] Export the model to onnx format')
 
     # dummy input
     dummy_input = torch.randn((batch_size, 3, input_h, input_w), requires_grad=True)
-
-    dynamic_axes = None 
-    dynamic_shapes = None 
-    if dynamic:
-        if dynamo:
-            dynamic_shapes = {
-                "input": {0: "batch", 2: "height", 3: "width"},
-                "output": {0: "batch", 2: "anchors"}
-                }
-        else:
-            dynamic_axes={
-                "input": {0: "batch", 2: "height", 3: "width"},
-                "output": {0: "batch", 2: "anchors"}
-                } 
 
     with torch.no_grad():
         torch.onnx.export(
@@ -91,10 +124,7 @@ def main():
             export_model_path, 
             opset_version=20, 
             input_names=["input"],
-            output_names=["output"],
-            dynamic_axes=dynamic_axes,
-            dynamo=dynamo,
-            dynamic_shapes=dynamic_shapes
+            output_names=["boxes", "scores"],
         )
         print(f"[MDET] onnx model exported to: {export_model_path}")
 
@@ -103,6 +133,16 @@ def main():
     if onnx_sim :
         export_model_sim_path = os.path.join(save_path, f'{model_name}_sim.onnx')
         simplify_onnx(export_model_path, export_model_sim_path)
+
+    max_output_boxes = 300
+    iou_threshold = 0.7
+    score_threshold = 0.01
+    yolo_insert_nms(
+        path=export_model_sim_path,
+        score_threshold=score_threshold,
+        iou_threshold=iou_threshold,
+        max_output_boxes=max_output_boxes,
+    )
 
 
 if __name__ == '__main__':
