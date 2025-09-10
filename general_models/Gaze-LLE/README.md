@@ -4,7 +4,7 @@
 
 1. set up a virtual environment.
     ```
-    conda create -n gazelle -y python=3.12
+    conda create -n gazelle -y python=3.11
     conda activate gazelle
     pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu129
     pip install transformers
@@ -15,17 +15,19 @@
     pip install ultralytics
     pip install timm
     pip install scikit-learn
-
     ```
 
-mkdir -p checkpoints
-wget https://github.com/YapaLab/yolo-face/releases/download/v0.0.0/yolov12n-face.pt -P checkpoints
-wget https://github.com/fkryan/gazelle/releases/download/v1.0.0/gazelle_dinov2_vitb14.pt -P checkpoints
-wget https://github.com/fkryan/gazelle/releases/download/v1.0.0/gazelle_dinov2_vitb14_inout.pt -P checkpoints
-wget https://github.com/fkryan/gazelle/releases/download/v1.0.0/gazelle_dinov2_vitl14.pt -P checkpoints
-wget https://github.com/fkryan/gazelle/releases/download/v1.0.0/gazelle_dinov2_vitl14_inout.pt -P checkpoints
+2. download pretrained checkpoints.
+    ```
+    mkdir -p checkpoints
+    wget https://github.com/YapaLab/yolo-face/releases/download/v0.0.0/yolov12n-face.pt -P checkpoints
+    wget https://github.com/fkryan/gazelle/releases/download/v1.0.0/gazelle_dinov2_vitb14.pt -P checkpoints
+    wget https://github.com/fkryan/gazelle/releases/download/v1.0.0/gazelle_dinov2_vitb14_inout.pt -P checkpoints
+    wget https://github.com/fkryan/gazelle/releases/download/v1.0.0/gazelle_dinov2_vitl14.pt -P checkpoints
+    wget https://github.com/fkryan/gazelle/releases/download/v1.0.0/gazelle_dinov2_vitl14_inout.pt -P checkpoints
+    ```
 
-2. check pytorch model inference
+3. check pytorch model inference
     ```
     cd ..
     python infer.py

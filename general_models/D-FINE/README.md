@@ -11,11 +11,14 @@
     pip install -r requirements.txt
     ```
 
-mkdir -p checkpoints
-wget https://github.com/Peterande/storage/releases/download/dfinev1.0/dfine_n_coco.pth -P checkpoints
-wget https://github.com/Peterande/storage/releases/download/dfinev1.0/dfine_s_obj2coco.pth -P checkpoints
+2. download pretrained checkpoints.
+    ```
+    mkdir -p checkpoints
+    wget https://github.com/Peterande/storage/releases/download/dfinev1.0/dfine_n_coco.pth -P checkpoints
+    wget https://github.com/Peterande/storage/releases/download/dfinev1.0/dfine_s_obj2coco.pth -P checkpoints
+    ```
 
-2. check pytorch model inference
+3. check pytorch model inference
     ```
     cd ..
     python infer.py
