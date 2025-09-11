@@ -73,11 +73,7 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32', dynamic_in
             
             for i_idx in range(network.num_inputs):
                 print(f'[TRT_E] input({i_idx}) name: {network.get_input(i_idx).name}, shape= {network.get_input(i_idx).shape}')
-                
-            # network.unmark_output(network.get_output(3))
-            # network.unmark_output(network.get_output(2))
-            # network.unmark_output(network.get_output(1))
-                
+
             for o_idx in range(network.num_outputs):
                 print(f'[TRT_E] output({o_idx}) name: {network.get_output(o_idx).name}, shape= {network.get_output(o_idx).shape}')
     
