@@ -3,7 +3,7 @@
 ## How to Run
 
 1. train base model with imagenet100 dataset
-- [Train Base Model (resnet18)](tmo/base_model/README.md)
+    - [Train Base Model (resnet18)](tmo/base_model/README.md)
 
 2. Sparsify and export sparsity onnx
     ```
@@ -16,13 +16,13 @@
     ```
     python onnx2trt.py
     ```
-- fp16 sparse_magnitude
-- Gpu Mem: 138M
-- [TRT_E] Test Top-1 Accuracy: 83.28%
-- [TRT_E] Test Top-5 Accuracy: 96.72%
-- [TRT_E] 10000 iterations time: 6.7392 [sec]
-- [TRT_E] Average FPS: 1483.85 [fps]
-- [TRT_E] Average inference time: 0.67 [msec]
+- fp16 sparse_magnitude    
+    Gpu Mem: 138M   
+    [TRT_E] Test Top-1 Accuracy: 83.28%   
+    [TRT_E] Test Top-5 Accuracy: 96.72%   
+    [TRT_E] 10000 iterations time: 6.7392 [sec]   
+    [TRT_E] Average FPS: 1483.85 [fps]   
+    [TRT_E] Average inference time: 0.67 [msec]   
 
 ## Reference
 

@@ -2,10 +2,11 @@
 
 ## How to Run
 
-1. download onnx 
+1. download onnx    
+    ```
     mkdir -p onnx
     wget https://huggingface.co/JianyuanWang/skyseg/resolve/main/skyseg.onnx -P onnx
-
+    ```
 2. generate tensorrt model
     ```
     python onnx2trt.py

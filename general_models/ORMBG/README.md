@@ -39,14 +39,14 @@
     ```
     python onnx2trt.py
     ```
-- input size : 512
-    [TRT_E] 100 iterations time: 0.6925 [sec]
-    [TRT_E] Average FPS: 144.40 [fps]
-    [TRT_E] Average inference time: 6.93 [msec]
-- input size : 1024
-    [TRT_E] 100 iterations time: 1.8420 [sec]
-    [TRT_E] Average FPS: 54.29 [fps]
-    [TRT_E] Average inference time: 18.42 [msec]
+- input size : 512   
+    [TRT_E] 100 iterations time: 0.6925 [sec]   
+    [TRT_E] Average FPS: 144.40 [fps]   
+    [TRT_E] Average inference time: 6.93 [msec]   
+- input size : 1024   
+    [TRT_E] 100 iterations time: 1.8420 [sec]   
+    [TRT_E] Average FPS: 54.29 [fps]   
+    [TRT_E] Average inference time: 18.42 [msec]   
 
 - [ormbg official GitHub](https://github.com/schirrmacher/ormbg)
 

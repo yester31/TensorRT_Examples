@@ -14,10 +14,10 @@
     ```
     python onnx2trt.py
     ```
-- fp16
-- Gpu Mem: 138M
-- [TRT_E] Test Top-1 Accuracy: 84.54 [%]
-- [TRT_E] Test Top-5 Accuracy: 97.20 [%]
-- [TRT_E] 10000 iterations time: 6.83 [sec]
-- [TRT_E] Average FPS: 1463.45 [fps]
-- [TRT_E] Average inference time: 0.68 [msec]
+- fp16  
+    Gpu Mem: 138M   
+    [TRT_E] Test Top-1 Accuracy: 84.54 [%]  
+    [TRT_E] Test Top-5 Accuracy: 97.20 [%]  
+    [TRT_E] 10000 iterations time: 6.83 [sec]   
+    [TRT_E] Average FPS: 1463.45 [fps]  
+    [TRT_E] Average inference time: 0.68 [msec] 

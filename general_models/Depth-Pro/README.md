@@ -35,4 +35,5 @@ python onnx2trt.py
 // a file 'dinov2l16_384_fp16.engine' will be generated in engine directory.
 ```
 
-https://github.com/apple/ml-depth-pro
+
+- [Depth-Pro official GitHub](https://github.com/apple/ml-depth-pro)

@@ -19,13 +19,13 @@
     ```
     - calibration
 
-- int8 tensorrt ptq (Implict)
-- Gpu Mem: 124M
-- [TRT_E] Test Top-1 Accuracy: 84.34%
-- [TRT_E] Test Top-5 Accuracy: 97.10%
-- [TRT_E] 10000 iterations time: 5.2218 [sec]
-- [TRT_E] Average FPS: 1915.04 [fps]
-- [TRT_E] Average inference time: 0.52 [msec]
+- int8 tensorrt ptq (Implict)   
+    Gpu Mem: 124M   
+    [TRT_E] Test Top-1 Accuracy: 84.34%   
+    [TRT_E] Test Top-5 Accuracy: 97.10%   
+    [TRT_E] 10000 iterations time: 5.2218 [sec]   
+    [TRT_E] Average FPS: 1915.04 [fps]   
+    [TRT_E] Average inference time: 0.52 [msec]   
 
 ## Reference
 

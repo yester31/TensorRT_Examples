@@ -15,13 +15,13 @@
     ```
     python onnx2trt.py
     ```
-- int8 qat (Explicit)
-- Gpu Mem: 138M
-- [TRT_E] Test Top-1 Accuracy: 84.42%
-- [TRT_E] Test Top-5 Accuracy: 97.10%
-- [TRT_E] 10000 iterations time: 6.3580 [sec]
-- [TRT_E] Average FPS: 1572.81 [fps]
-- [TRT_E] Average inference time: 0.64 [msec]
+- int8 qat (Explicit)   
+    Gpu Mem: 138M   
+    [TRT_E] Test Top-1 Accuracy: 84.42%   
+    [TRT_E] Test Top-5 Accuracy: 97.10%   
+    [TRT_E] 10000 iterations time: 6.3580 [sec]  
+    [TRT_E] Average FPS: 1572.81 [fps]   
+    [TRT_E] Average inference time: 0.64 [msec]   
 
 ## Reference
 
