@@ -8,7 +8,6 @@ checkpoints/
 train_progress/
 compare_array/
 ml-depth-pro/
-Real-ESRGAN/
 weights/
 save/
 *.cache
@@ -21,7 +20,7 @@ dataset/
 wandb/
 test/
 calib_datas/
-*_/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
