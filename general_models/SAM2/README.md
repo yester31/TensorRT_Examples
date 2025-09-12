@@ -26,11 +26,11 @@
     cd ..
     python infer.py
     ```
-
-[TRT_E] 1000 iterations time: 7.5730 [sec]   
-[TRT_E] Average FPS: 13.20 [fps]   
-[TRT_E] Average inference time: 75.73 [msec]   
-GPU Mem : 790M   
+    - sam2.1_hiera_tiny   
+        1000 iterations time: 7.5730 [sec]   
+        Average FPS: 13.20 [fps]   
+        Average inference time: 75.73 [msec]   
+        GPU Mem : 790M   
 
 ## How to Run (TensorRT)
 
@@ -63,11 +63,11 @@ GPU Mem : 790M
     ```
     python onnx2trt.py
     ```
-
-[TRT_E] 1000 iterations time: 0.4075 [sec]   
-[TRT_E] Average FPS: 24.54 [fps]   
-[TRT_E] Average inference time: 40.75 [msec]  
-GPU Mem : 762M   
+    - sam2.1_hiera_tiny   
+        1000 iterations time: 0.4075 [sec]   
+        Average FPS: 24.54 [fps]   
+        Average inference time: 40.75 [msec]  
+        GPU Mem : 762M   
 
 - [SAM2: Segment Anything in Images and Videos](https://ai.meta.com/research/publications/sam-2-segment-anything-in-images-and-videos/)
 - [SAM2 official GitHub](https://github.com/facebookresearch/sam2)
