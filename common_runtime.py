@@ -101,8 +101,7 @@ def allocate_buffers(engine: trt.ICudaEngine, output_shape = None, profile_idx: 
         shape = engine.get_tensor_shape(binding) if profile_idx is None else engine.get_tensor_profile_shape(binding, profile_idx)[-1]
         shape_valid = np.all([s >= 0 for s in shape])
         if not shape_valid and profile_idx is None:
-            raise ValueError(f"Binding {binding} has dynamic shape, " +\
-                "but no profile was specified.")
+            raise ValueError(f"Binding {binding} has dynamic shape, {shape} but no profile was specified.")
         
         size = trt.volume(shape)
         if profile_idx is not None:
@@ -112,6 +111,12 @@ def allocate_buffers(engine: trt.ICudaEngine, output_shape = None, profile_idx: 
                 size = trt.volume(output_shape[binding])
             elif binding == 'inout_preds':
                 size = trt.volume(output_shape[binding])
+            elif binding == 'masks':
+                size = trt.volume((1, 4, 256, 256))
+            elif binding == 'iou_predictions':
+                size = trt.volume((1, 4))
+            elif binding == 'low_res_masks':
+                size = trt.volume((1, 4, 256, 256))
 
         trt_type = engine.get_tensor_dtype(binding)
 

@@ -185,6 +185,8 @@ conda env remove -n trte -y
   [6.1 Depth-Pro(Sharp Monocular Metric Depth)](general_models/Depth-Pro/README.md)   
 7. Gaze Target Estimation   
   [7.1 Gaze-LLE](general_models/Gaze-LLE/README.md)   
+8. SAM Series   
+  [8.1 SAM2](general_models/SAM2/README.md)   
 
 
 ## 4. reference
