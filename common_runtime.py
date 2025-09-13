@@ -112,11 +112,11 @@ def allocate_buffers(engine: trt.ICudaEngine, output_shape = None, profile_idx: 
             elif binding == 'inout_preds':
                 size = trt.volume(output_shape[binding])
             elif binding == 'masks':
-                size = trt.volume((1, 4, 256, 256))
+                size = trt.volume(output_shape[binding])
             elif binding == 'iou_predictions':
-                size = trt.volume((1, 4))
+                size = trt.volume(output_shape[binding])
             elif binding == 'low_res_masks':
-                size = trt.volume((1, 4, 256, 256))
+                size = trt.volume(output_shape[binding])
 
         trt_type = engine.get_tensor_dtype(binding)
 

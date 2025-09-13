@@ -187,6 +187,7 @@ conda env remove -n trte -y
   [7.1 Gaze-LLE](general_models/Gaze-LLE/README.md)   
 8. SAM Series   
   [8.1 SAM2](general_models/SAM2/README.md)   
+  [8.2 EfficientViT-SAM](general_models/EfficientViT-SAM/README.md)   
 
 
 ## 4. reference
