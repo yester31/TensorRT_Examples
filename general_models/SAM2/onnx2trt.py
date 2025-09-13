@@ -175,9 +175,15 @@ def main():
     context = engine.create_execution_context()
     context2 = engine2.create_execution_context()
 
+    dynamic_output_shapes = {
+        "masks":[1, 4, 256, 256],
+        "iou_predictions": [1, 4],
+        "low_res_masks": [1, 4, 256, 256],
+    }
+
     try:
         inputs, outputs, bindings, stream = common.allocate_buffers(engine)
-        inputs2, outputs2, bindings2, stream2 = common.allocate_buffers(engine2, dynamic_input_shapes, 0)
+        inputs2, outputs2, bindings2, stream2 = common.allocate_buffers(engine2, dynamic_output_shapes, 0)
 
         # warm-up
         for _ in range(30):
