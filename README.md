@@ -168,23 +168,31 @@ conda env remove -n trte -y
 ## 3. Conversion of General Deep Learning Models to TensorRT
 
 1. Super Resolution  
-  [1.1 Real-ESRGAN](general_models/Real-ESRGAN/README.md)
+  [1.1 Real-ESRGAN](general_models/Real-ESRGAN/README.md)   
+  
 2. Object Detection  
   [2.1 Yolo11](general_models/Yolo11/README.md)   
   [2.2 Yolov12(Face Detection)](general_models/Yolov12/README.md)   
   [2.3 D-FINE](general_models/D-FINE/README.md)   
-3. Instance Segmentation
+  [2.4 YOLOX](general_models/YOLOX/README.md)   
+
+3. Instance Segmentation    
+
 4. Semantic Segmentation   
   [4.1 U-2-Net(Sky Segmentation)](general_models/U-2-Net/README.md)  
   [4.2 BEN2(Remove Background)](general_models/BEN2/README.md)  
   [4.3 MODNet(Portrait Matting)](general_models/MODNet/README.md)  
   [4.4 ORMBG(Remove Background for images with humans)](general_models/ORMBG/README.md)
+   
 5. Panoptic Segmentation   
   [5.1 EoMT](general_models/EoMT/README.md)   
+
 6. Depth Estimation  
   [6.1 Depth-Pro(Sharp Monocular Metric Depth)](general_models/Depth-Pro/README.md)   
+
 7. Gaze Target Estimation   
   [7.1 Gaze-LLE](general_models/Gaze-LLE/README.md)   
+
 8. SAM Series   
   [8.1 SAM2](general_models/SAM2/README.md)   
   [8.2 EfficientViT-SAM](general_models/EfficientViT-SAM/README.md)   
