@@ -9,6 +9,10 @@
     conda create -n dfine -y python=3.11
     conda activate dfine
     pip install -r requirements.txt
+    pip install opencv-python
+    pip install onnx
+    pip install onnxscript
+    pip install onnxsim
     ```
 
 2. download pretrained checkpoints.
@@ -35,6 +39,12 @@
     ```
     python onnx2trt.py
     ```
+
+- fp16 (dfine_hgnetv2_s)
+    [TRT_E] 1000 iterations time: 4.7764 [sec]
+    [TRT_E] Average FPS: 209.36 [fps]
+    [TRT_E] Average inference time: 4.78 [msec]
+    GPU mem : 186M  
 
 - [D-FINE: Redefine Regression Task of DETRs as Fine‑grained Distribution Refinement](https://arxiv.org/pdf/2410.13842)
 - [D-FINE official GitHub](https://github.com/Peterande/D-FINE)

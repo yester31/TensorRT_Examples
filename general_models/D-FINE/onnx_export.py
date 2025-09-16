@@ -3,7 +3,7 @@ from infer import *
 import torch.onnx
 import onnx
 import os 
-# from onnxsim import simplify
+from onnxsim import simplify
 
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -31,7 +31,7 @@ def checker_onnx(export_model_path):
         print(f"[MDET] Output: {output.name}")
         for d in output.type.tensor_type.shape.dim:
             print("[MDET] dim_value:", d.dim_value, "dim_param:", d.dim_param)
-'''
+
 def simplify_onnx(export_model_path, export_model_sim_path):
     print("[MDET] Simplify exported onnx model")
     onnx_model = onnx.load(export_model_path)
@@ -44,7 +44,7 @@ def simplify_onnx(export_model_path, export_model_sim_path):
     except Exception as e:
         print(f"[MDET] simplification failed: {e}")
     checker_onnx(export_model_sim_path)
-'''
+
 
 def main():
 
@@ -72,13 +72,10 @@ def main():
     cfg.model.load_state_dict(state)
     model = Model(cfg).to(DEVICE)
 
-
-    dynamo = True   # True or False
-    onnx_sim = False # True or False
+    onnx_sim = True # True or False
     dynamic = False  # True or False 
     model_name = f"{model_name}_{input_h}x{input_w}"
     model_name = f"{model_name}_dynamic" if dynamic else model_name
-    model_name = f"{model_name}_dynamo" if dynamo else model_name
     export_model_path = os.path.join(save_path, f'{model_name}.onnx')
     print('[MDET] Export the model to onnx format')
 
@@ -94,16 +91,15 @@ def main():
             opset_version=20, 
             input_names=["input", "ori_size"],
             output_names=["labels", "boxes", "scores"],
-            dynamo=dynamo,
         )
         print(f"[MDET] onnx model exported to: {export_model_path}")
 
     print("[MDET] Validate exported onnx model")
     checker_onnx(export_model_path)
 
-    # if onnx_sim :
-    #     export_model_sim_path = os.path.join(save_path, f'{model_name}_sim.onnx')
-    #     simplify_onnx(export_model_path, export_model_sim_path)
+    if onnx_sim :
+        export_model_sim_path = os.path.join(save_path, f'{model_name}_sim.onnx')
+        simplify_onnx(export_model_path, export_model_sim_path)
 
 
 if __name__ == '__main__':

@@ -151,7 +151,7 @@ def main():
 
     # Input
     image_path = f"{CUR_DIR}/data/test1.jpg"
-    image_path = f"{CUR_DIR}/data/test2.jpg"
+    # image_path = f"{CUR_DIR}/data/test2.jpg"
     image_file_name = os.path.splitext(os.path.basename(image_path))[0]
     
     batch_size = 1
@@ -166,12 +166,10 @@ def main():
     # Model and engine paths
     precision = "fp16"   # int8 or fp32 or fp16
     model_name = "dfine_s_obj2coco"
-    dynamo = False   # True or False
-    onnx_sim = False # True or False
+    onnx_sim = True # True or False
     dynamic = False  # True or False 
     model_name = f"{model_name}_{input_h}x{input_w}"
     model_name = f"{model_name}_dynamic" if dynamic else model_name
-    model_name = f"{model_name}_dynamo" if dynamo else model_name
     model_name = f"{model_name}_sim" if onnx_sim else model_name
     onnx_model_path = os.path.join(CUR_DIR, 'onnx', f'{model_name}.onnx')
     engine_file_path = os.path.join(CUR_DIR, 'engine', f'{model_name}_{precision}.engine')
@@ -193,7 +191,6 @@ def main():
         for i in range(iteration):
             begin = time.time()
             trt_outputs = common.do_inference(context, engine=engine, bindings=bindings, inputs=inputs, outputs=outputs, stream=stream)
-            torch.cuda.synchronize()
             dur_time += time.time() - begin
 
         print(f'[TRT_E] {iteration} iterations time: {dur_time:.4f} [sec]')
@@ -208,7 +205,7 @@ def main():
     boxes = np.array(trt_outputs[1]).reshape((1,300,4))  
     scores = np.array(trt_outputs[2]).reshape((1,300)) 
     
-    thrh=0.6
+    thrh=0.5
     scr = scores[0]
     lab = labels[0][scr > thrh]
     box = boxes[0][scr > thrh]
