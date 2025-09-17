@@ -46,10 +46,10 @@
     python onnx2trt.py
     ```
 - fp16   
-    [TRT_E] 1000 iterations time: 4.2332 [sec]
-    [TRT_E] Average FPS: 236.23 [fps]
-    [TRT_E] Average inference time: 4.23 [msec]   
-    GPU mem : 170M   
+    [TRT_E] 1000 iterations time: 4.2332 [sec]   
+    [TRT_E] Average FPS: 236.23 [fps]   
+    [TRT_E] Average inference time: 4.23 [msec]     
+    GPU mem : 170M      
 
 
 - [YOLOX: Exceeding YOLO Series in 2021](https://arxiv.org/pdf/2107.08430)
