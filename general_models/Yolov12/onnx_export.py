@@ -5,9 +5,10 @@ import torch.onnx
 import onnx
 import os 
 from onnxsim import simplify
-from infer import * 
+import torchvision
 import onnx_graphsurgeon
 from collections import OrderedDict
+import numpy as np
 
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -93,6 +94,23 @@ def yolo_insert_nms(
     filename = os.path.splitext(os.path.basename(path))[0]
     export_model_w_nms_path = f"{CUR_DIR}/onnx/{filename}_w_nms.onnx"
     onnx.save(onnx_graphsurgeon.export_onnx(graph), export_model_w_nms_path)
+
+class YOLOv12(torch.nn.Module):
+    def __init__(self, checkpoint_path, class_count=80) -> None:
+        super().__init__()
+
+        model = YOLO(checkpoint_path)
+        self.model = model.model
+        self.class_count = class_count
+
+    def forward(self, x):
+        """https://github.com/ultralytics/ultralytics/blob/main/ultralytics/nn/tasks.py#L216"""
+        pred: torch.Tensor = self.model(x)[0]  # [N, 84, 8400]
+        pred1 = pred.permute(0, 2, 1) # [N, 84, 8400] -> [N, 8400, 84] 
+        boxes, scores = pred1.split([4, self.class_count], dim=-1) # [N, 8400, 84] -> [N, 8400, 4], [N, 8400, 80]  
+        boxes = torchvision.ops.box_convert(boxes, in_fmt="cxcywh", out_fmt="xyxy")
+        
+        return boxes, scores
 
 def main():
 

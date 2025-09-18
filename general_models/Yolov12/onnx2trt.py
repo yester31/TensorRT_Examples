@@ -10,7 +10,6 @@ import numpy as np
 import time
 import common
 from common import *
-from infer import *
 
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -93,7 +92,75 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32', dynamic_in
     else:
         return build_engine()
 
+def letterbox(img, new_shape=(640, 640), color=(114, 114, 114)):
+    h, w = img.shape[:2]
+    new_h, new_w = new_shape
+
+    # scale factor
+    scale = min(new_w / w, new_h / h)
+    resized_w, resized_h = int(w * scale), int(h * scale)
+
+    # resize
+    img_resized = cv2.resize(img, (resized_w, resized_h), interpolation=cv2.INTER_LINEAR)
+
+    # padding 
+    pad_w = new_w - resized_w
+    pad_h = new_h - resized_h
+    pad_left   = pad_w // 2
+    pad_right  = pad_w - pad_left
+    pad_top    = pad_h // 2
+    pad_bottom = pad_h - pad_top
+
+    # padding
+    img_padded = cv2.copyMakeBorder(
+        img_resized,
+        pad_top, pad_bottom, pad_left, pad_right,
+        cv2.BORDER_CONSTANT,
+        value=color
+    )
+
+    return img_padded, scale, (pad_left, pad_top)
+
+def transform_cv(image):    
+    # 0) BGR -> RGB (필요 시 주석 해제)
+    # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    
+    # 1) Resize (640x640)
+    # image = cv2.resize(image, (640, 640), interpolation=cv2.INTER_LINEAR)
+
+    # 2) ToTensor (HWC -> CHW, 0~1 float)
+    image = image.astype(np.float32) / 255.0
+    image = np.transpose(image, (2, 0, 1))  # (H,W,C) -> (C,H,W)
+
+    # 3) Add batch dimension
+    image = np.expand_dims(image, axis=0)  # (1,C,H,W)
+
+    # Return as NumPy array (C-order)   
+    return np.array(image, dtype=np.float32, order="C")
+
+def scale_boxes_back(boxes, scale, pad, orig_shape):
+    """
+    boxes: [N,4], (x1, y1, x2, y2) in resized/letterbox coords
+    scale: float, resizing
+    pad: (pad_left, pad_top)
+    orig_shape: (H_orig, W_orig)
+    """
+    pad_left, pad_top = pad
+    H_orig, W_orig = orig_shape
+
+    boxes[:, [0, 2]] = (boxes[:, [0, 2]] - pad_left) / scale
+    boxes[:, [1, 3]] = (boxes[:, [1, 3]] - pad_top) / scale
+
+    boxes[:, [0, 2]] = boxes[:, [0, 2]].clip(0, W_orig)
+    boxes[:, [1, 3]] = boxes[:, [1, 3]].clip(0, H_orig)
+
+    return boxes
+
+
 def main():
+    save_dir_path = os.path.join(CUR_DIR, 'results')
+    os.makedirs(save_dir_path, exist_ok=True)
+    
     iteration = 1000
     dur_time = 0
     coco_labels = ['face']
