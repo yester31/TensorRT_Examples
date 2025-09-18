@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.insert(1, os.path.join(sys.path[0], ".."))
+sys.path.insert(1, os.path.join(sys.path[0], "..", ".."))
 
 import tensorrt as trt
 import torch
@@ -10,21 +10,12 @@ import numpy as np
 import time
 import common
 from common import *
-from utils import *
 
-current_file_path = os.path.abspath(__file__)
-current_directory = os.path.dirname(current_file_path)
-print(f"current file path: {current_file_path}")
-print(f"current directory: {current_directory}")
-
-# Global Variables
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print(f"Using device: {device}")
-
+CUR_DIR = os.path.dirname(os.path.abspath(__file__))
+DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {DEVICE}")
 TRT_LOGGER = trt.Logger(trt.Logger.INFO)
-TRT_LOGGER.min_severity = trt.Logger.Severity.INFO
-
-timing_cache = f"{current_directory}/timing.cache"
+trt.init_libnvinfer_plugins(TRT_LOGGER, "")
 
 def get_engine(onnx_file_path, engine_file_path="", precision='fp32', dynamic_input_shapes=None):
     """Load or build a TensorRT engine based on the ONNX model."""
@@ -44,7 +35,8 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32', dynamic_in
                     raise RuntimeError("[TRT] Failed to parse the ONNX file.")
                 for error in range(parser.num_errors):
                     print(parser.get_error(error))
-                    
+
+            timing_cache = f"{os.path.dirname(engine_file_path)}/{os.path.splitext(os.path.basename(engine_file_path))[0]}_timing.cache"
             common.setup_timing_cache(config, timing_cache)
             config.profiling_verbosity = trt.ProfilingVerbosity.DETAILED
             config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, common.GiB(4))
@@ -80,11 +72,7 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32', dynamic_in
             
             for i_idx in range(network.num_inputs):
                 print(f'[TRT_E] input({i_idx}) name: {network.get_input(i_idx).name}, shape= {network.get_input(i_idx).shape}')
-                
-            network.unmark_output(network.get_output(3))
-            network.unmark_output(network.get_output(2))
-            network.unmark_output(network.get_output(1))
-                
+
             for o_idx in range(network.num_outputs):
                 print(f'[TRT_E] output({o_idx}) name: {network.get_output(o_idx).name}, shape= {network.get_output(o_idx).shape}')
     
@@ -104,93 +92,105 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32', dynamic_in
     else:
         return build_engine()
 
+def letterbox(img, new_shape=(640, 640), color=(114, 114, 114)):
+    h, w = img.shape[:2]
+    new_h, new_w = new_shape
 
-def xywh_to_xyxy_np(boxes):
-    """Convert bounding boxes from xywh to xyxy format (NumPy)."""
-    # xywh: [x_center, y_center, width, height]
-    # xyxy: [x1, y1, x2, y2]
-    xyxy_boxes = np.zeros_like(boxes)
-    xyxy_boxes[:, 0] = boxes[:, 0] - boxes[:, 2] / 2  # x1 = x_center - width / 2
-    xyxy_boxes[:, 1] = boxes[:, 1] - boxes[:, 3] / 2  # y1 = y_center - height / 2
-    xyxy_boxes[:, 2] = boxes[:, 0] + boxes[:, 2] / 2  # x2 = x_center + width / 2
-    xyxy_boxes[:, 3] = boxes[:, 1] + boxes[:, 3] / 2  # y2 = y_center + height / 2
-    return xyxy_boxes
+    # scale factor
+    scale = min(new_w / w, new_h / h)
+    resized_w, resized_h = int(w * scale), int(h * scale)
 
-def nms_numpy(boxes, scores, iou_threshold=0.45):
-    """Perform Non-Maximum Suppression (NMS) using NumPy."""
-    x1 = boxes[:, 0]
-    y1 = boxes[:, 1]
-    x2 = boxes[:, 2]
-    y2 = boxes[:, 3]
+    # resize
+    img_resized = cv2.resize(img, (resized_w, resized_h), interpolation=cv2.INTER_LINEAR)
 
-    areas = (x2 - x1 + 1) * (y2 - y1 + 1)
-    order = scores.argsort()[::-1]
+    # padding 
+    pad_w = new_w - resized_w
+    pad_h = new_h - resized_h
+    pad_left   = pad_w // 2
+    pad_right  = pad_w - pad_left
+    pad_top    = pad_h // 2
+    pad_bottom = pad_h - pad_top
 
-    keep = []
-    while order.size > 0:
-        i = order[0]
-        keep.append(i)
+    # padding
+    img_padded = cv2.copyMakeBorder(
+        img_resized,
+        pad_top, pad_bottom, pad_left, pad_right,
+        cv2.BORDER_CONSTANT,
+        value=color
+    )
 
-        xx1 = np.maximum(x1[i], x1[order[1:]])
-        yy1 = np.maximum(y1[i], y1[order[1:]])
-        xx2 = np.minimum(x2[i], x2[order[1:]])
-        yy2 = np.minimum(y2[i], y2[order[1:]])
+    return img_padded, scale, (pad_left, pad_top)
 
-        w = np.maximum(0, xx2 - xx1 + 1)
-        h = np.maximum(0, yy2 - yy1 + 1)
-        inter = w * h
-
-        iou = inter / (areas[i] + areas[order[1:]] - inter)
-        inds = np.where(iou <= iou_threshold)[0]
-        order = order[inds + 1]
-
-    return keep
-
-def non_max_suppression(batch_pred, conf_thres=0.25, iou_thres=0.45, max_det=300):
-    """Perform Non-Maximum Suppression (NMS) without objectness confidence, using NumPy."""
+def transform_cv(image):    
+    # 0) BGR -> RGB (필요 시 주석 해제)
+    # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     
-    batch_size = batch_pred.shape[0]  # Get batch size
-    all_batch_boxes = []
-    
-    for i in range(batch_size):
-        # Select one image's predictions (shape: [84, 8400])
-        pred = batch_pred[i]
+    # 1) Resize (640x640)
+    # image = cv2.resize(image, (640, 640), interpolation=cv2.INTER_LINEAR)
 
-        # Split predictions: first 4 values are bounding box coordinates (xywh)
-        boxes = pred[:4, :].T  # (8400, 4) - convert to shape [8400, 4]
-        # Remaining values are class scores
-        class_scores = pred[4:, :]  # (80, 8400)
+    # 2) ToTensor (HWC -> CHW, 0~1 float)
+    image = image.astype(np.float32) / 255.0
+    image = np.transpose(image, (2, 0, 1))  # (H,W,C) -> (C,H,W)
 
-        # Convert xywh format to xyxy format for bounding boxes
-        boxes = xywh_to_xyxy_np(boxes)
+    # 3) Add batch dimension
+    image = np.expand_dims(image, axis=0)  # (1,C,H,W)
 
-        # Find the class with the highest score for each prediction
-        class_conf = np.max(class_scores, axis=0)  # (8400,)
-        class_pred = np.argmax(class_scores, axis=0)  # (8400,)
+    # Return as NumPy array (C-order)   
+    return np.array(image, dtype=np.float32, order="C")
 
-        # Apply confidence threshold on class confidence (instead of object confidence)
-        mask = class_conf >= conf_thres
-        boxes = boxes[mask]
-        class_conf = class_conf[mask]
-        class_pred = class_pred[mask]
+def scale_boxes_back(boxes, scale, pad, orig_shape):
+    """
+    boxes: [N,4], (x1, y1, x2, y2) in resized/letterbox coords
+    scale: float, resizing
+    pad: (pad_left, pad_top)
+    orig_shape: (H_orig, W_orig)
+    """
+    pad_left, pad_top = pad
+    H_orig, W_orig = orig_shape
 
-        # Apply Non-Maximum Suppression (NMS)
-        if len(boxes) > 0:
-            indices = nms_numpy(boxes, class_conf, iou_thres)
-            if len(indices) > max_det:
-                indices = indices[:max_det]
-            final_boxes = boxes[indices]
-            final_scores = class_conf[indices]
-            final_classes = class_pred[indices]
-        else:
-            final_boxes, final_scores, final_classes = np.array([]), np.array([]), np.array([])
+    boxes[:, [0, 2]] = (boxes[:, [0, 2]] - pad_left) / scale
+    boxes[:, [1, 3]] = (boxes[:, [1, 3]] - pad_top) / scale
 
-        # Store the results for the current image
-        all_batch_boxes.append((final_boxes, final_scores, final_classes))
+    boxes[:, [0, 2]] = boxes[:, [0, 2]].clip(0, W_orig)
+    boxes[:, [1, 3]] = boxes[:, [1, 3]].clip(0, H_orig)
 
-    return all_batch_boxes
+    return boxes
 
-coco_labels = [
+def vis(img, boxes, scores, cls_ids, conf=0.5, class_names=None):
+
+    for i in range(len(boxes)):
+        box = boxes[i]
+        cls_id = int(cls_ids[i])
+        score = scores[i]
+        if score < conf:
+            continue
+        x0 = int(box[0])
+        y0 = int(box[1])
+        x1 = int(box[2])
+        y1 = int(box[3])
+
+        color = (_COLORS[cls_id] * 255).astype(np.uint8).tolist()
+        text = '{}:{:.1f}%'.format(class_names[cls_id], score * 100)
+        txt_color = (0, 0, 0) if np.mean(_COLORS[cls_id]) > 0.5 else (255, 255, 255)
+        font = cv2.FONT_HERSHEY_SIMPLEX
+
+        txt_size = cv2.getTextSize(text, font, 0.4, 1)[0]
+        cv2.rectangle(img, (x0, y0), (x1, y1), color, 2)
+
+        txt_bk_color = (_COLORS[cls_id] * 255 * 0.7).astype(np.uint8).tolist()
+        cv2.rectangle(
+            img,
+            (x0, y0 + 1),
+            (x0 + txt_size[0] + 1, y0 + int(1.5*txt_size[1])),
+            txt_bk_color,
+            -1
+        )
+        cv2.putText(img, text, (x0, y0 + txt_size[1]), font, 0.4, txt_color, thickness=1)
+        print(f"detected : {text}, {(x0, y0), (x1, y1)}")
+
+    return img
+
+COCO_CLASSES = [
     'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 'traffic light',
     'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow',
     'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
@@ -202,78 +202,134 @@ coco_labels = [
     'hair drier', 'toothbrush'
 ]
 
-def draw_bounding_boxes(image, boxes, labels=None, scores=None, color=(0, 255, 0), thickness=2):
-    """
-    Draw bounding boxes on the image using OpenCV.
-    
-    Parameters:
-    - image: The image on which to draw the bounding boxes (NumPy array).
-    - boxes: List of bounding boxes in xyxy format [(x1, y1, x2, y2), ...].
-    - labels: Optional list of labels for each bounding box.
-    - color: Color of the bounding box (BGR format).
-    - thickness: Thickness of the bounding box lines.
-    """
-    for i, box in enumerate(boxes):
-        box = box.astype(int)
-        x1, y1, x2, y2 = box  # Ensure the coordinates are integers
-        # Draw rectangle on the image
-        cv2.rectangle(image, (x1, y1), (x2, y2), color, thickness)
-        
-        # If labels are provided, display them on the bounding box
-        if labels is not None:
-            label = f'{labels[i]} {np.ceil(scores[i] * 1000) / 1000}'
-            cv2.putText(image, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
+_COLORS = np.array(
+    [
+        0.000, 0.447, 0.741,
+        0.850, 0.325, 0.098,
+        0.929, 0.694, 0.125,
+        0.494, 0.184, 0.556,
+        0.466, 0.674, 0.188,
+        0.301, 0.745, 0.933,
+        0.635, 0.078, 0.184,
+        0.300, 0.300, 0.300,
+        0.600, 0.600, 0.600,
+        1.000, 0.000, 0.000,
+        1.000, 0.500, 0.000,
+        0.749, 0.749, 0.000,
+        0.000, 1.000, 0.000,
+        0.000, 0.000, 1.000,
+        0.667, 0.000, 1.000,
+        0.333, 0.333, 0.000,
+        0.333, 0.667, 0.000,
+        0.333, 1.000, 0.000,
+        0.667, 0.333, 0.000,
+        0.667, 0.667, 0.000,
+        0.667, 1.000, 0.000,
+        1.000, 0.333, 0.000,
+        1.000, 0.667, 0.000,
+        1.000, 1.000, 0.000,
+        0.000, 0.333, 0.500,
+        0.000, 0.667, 0.500,
+        0.000, 1.000, 0.500,
+        0.333, 0.000, 0.500,
+        0.333, 0.333, 0.500,
+        0.333, 0.667, 0.500,
+        0.333, 1.000, 0.500,
+        0.667, 0.000, 0.500,
+        0.667, 0.333, 0.500,
+        0.667, 0.667, 0.500,
+        0.667, 1.000, 0.500,
+        1.000, 0.000, 0.500,
+        1.000, 0.333, 0.500,
+        1.000, 0.667, 0.500,
+        1.000, 1.000, 0.500,
+        0.000, 0.333, 1.000,
+        0.000, 0.667, 1.000,
+        0.000, 1.000, 1.000,
+        0.333, 0.000, 1.000,
+        0.333, 0.333, 1.000,
+        0.333, 0.667, 1.000,
+        0.333, 1.000, 1.000,
+        0.667, 0.000, 1.000,
+        0.667, 0.333, 1.000,
+        0.667, 0.667, 1.000,
+        0.667, 1.000, 1.000,
+        1.000, 0.000, 1.000,
+        1.000, 0.333, 1.000,
+        1.000, 0.667, 1.000,
+        0.333, 0.000, 0.000,
+        0.500, 0.000, 0.000,
+        0.667, 0.000, 0.000,
+        0.833, 0.000, 0.000,
+        1.000, 0.000, 0.000,
+        0.000, 0.167, 0.000,
+        0.000, 0.333, 0.000,
+        0.000, 0.500, 0.000,
+        0.000, 0.667, 0.000,
+        0.000, 0.833, 0.000,
+        0.000, 1.000, 0.000,
+        0.000, 0.000, 0.167,
+        0.000, 0.000, 0.333,
+        0.000, 0.000, 0.500,
+        0.000, 0.000, 0.667,
+        0.000, 0.000, 0.833,
+        0.000, 0.000, 1.000,
+        0.000, 0.000, 0.000,
+        0.143, 0.143, 0.143,
+        0.286, 0.286, 0.286,
+        0.429, 0.429, 0.429,
+        0.571, 0.571, 0.571,
+        0.714, 0.714, 0.714,
+        0.857, 0.857, 0.857,
+        0.000, 0.447, 0.741,
+        0.314, 0.717, 0.741,
+        0.50, 0.5, 0
+    ]
+).astype(np.float32).reshape(-1, 3)
 
-    return image
 
 def main():
+    save_dir_path = os.path.join(CUR_DIR, 'results')
+    os.makedirs(save_dir_path, exist_ok=True)
+
     iteration = 1000
     dur_time = 0
 
     # Input
-    image_file_name = 'panda0.jpg'
-    img_path = os.path.join(current_directory, 'data', image_file_name)
-    img = cv2.imread(img_path)  # Load image
-    img = cv2.resize(img, (640, 640), interpolation=cv2.INTER_LINEAR)
-    input_image = preprocess_image(img)  # Preprocess image
-
-    batch_images = np.concatenate([input_image], axis=0)
-    print(batch_images.shape)
+    image_path = f"{CUR_DIR}/data/test2.jpg"
+    image_file_name = os.path.splitext(os.path.basename(image_path))[0]
     
-    dynamic_input_shapes = [[1,3,640,640],[1,3,640,640],[1,3,640,640]]
+    batch_size = 1
+    input_h, input_w = 640, 640 
+    img = cv2.imread(image_path)  # Load image
+    raw_img = img.copy()
+    height, width = img.shape[:2]
+    print(f"[MDET] original image size : {height, width}")
+    rgb_image = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    padded_image, scale, pad = letterbox(rgb_image)
+    input_image = transform_cv(padded_image)   # Preprocess image
+    print(input_image.shape)
 
     # Model and engine paths
-    model_name = "yolo11l"
     precision = "fp16"   # int8 or fp32 or fp16
-    quantization_method = "ptq" # moq or ptq
+    onnx_sim = True # True or False
+    model_name = "yolo11n"
+    model_name = f"{model_name}_{input_h}x{input_w}"
     if precision == "int8":
-        if quantization_method == "moq":
-            dynamic_input_shapes = None
-            onnx_model_path = os.path.join(current_directory, 'onnx', f'{model_name}_{device.type}_moq.onnx')
-            engine_file_path = os.path.join(current_directory, 'engine', f'{model_name}_{precision}_moq.engine')
-            # Average FPS: 602.82 [fps] <- int8
-        else : 
-            onnx_model_path = os.path.join(current_directory, 'onnx', f'{model_name}_{device.type}_ptq.onnx')
-            engine_file_path = os.path.join(current_directory, 'engine', f'{model_name}_{precision}_ptq.engine')
-            # Average FPS: 559.87 [fps] <- int8
-    else :
-        quantization_method = ''
-        onnx_model_path = os.path.join(current_directory, 'onnx', f'{model_name}_{device.type}.onnx')
-        engine_file_path = os.path.join(current_directory, 'engine', f'{model_name}_{precision}.engine')
-        # Average FPS: 542.31 [fps] <- fp16
-        # Average FPS: 278.06 [fps] <- fp32
+        quant_method = "moq" # moq or ptq
+        model_name = f"{model_name}_{quant_method}"
+    model_name = f"{model_name}_sim" if onnx_sim else model_name
+    model_name = f"{model_name}_w_nms"
+    onnx_model_path = os.path.join(CUR_DIR, 'onnx', f'{model_name}.onnx')
+    engine_file_path = os.path.join(CUR_DIR, 'engine', f'{model_name}_{precision}.engine')
     os.makedirs(os.path.dirname(engine_file_path), exist_ok=True)
 
-    # Output shapes expected
-    output_shapes = [(batch_images.shape[0],84,8400)]
-
     # Load or build the TensorRT engine and do inference
-    with get_engine(onnx_model_path, engine_file_path, precision, dynamic_input_shapes) as engine, \
+    with get_engine(onnx_model_path, engine_file_path, precision) as engine, \
             engine.create_execution_context() as context:
 
-        inputs, outputs, bindings, stream = common.allocate_buffers(engine, output_shapes[0], profile_idx=0)
-        inputs[0].host = batch_images
-        context.set_input_shape('input', batch_images.shape)
+        inputs, outputs, bindings, stream = common.allocate_buffers(engine)
+        inputs[0].host = input_image
 
         # Warm-up
         for i in range(50):
@@ -283,39 +339,33 @@ def main():
         for i in range(iteration):
             begin = time.time()
             trt_outputs = common.do_inference(context, engine=engine, bindings=bindings, inputs=inputs, outputs=outputs, stream=stream)
-            torch.cuda.synchronize()
             dur_time += time.time() - begin
 
         print(f'[TRT_E] {iteration} iterations time: {dur_time:.4f} [sec]')
         
-    # Reshape and post-process the output
-    t_outputs = np.array(trt_outputs).reshape(output_shapes[0]) 
-
     # Results
     avg_time = dur_time / iteration
     print(f'[TRT_E] Average FPS: {1 / avg_time:.2f} [fps]')
     print(f'[TRT_E] Average inference time: {avg_time * 1000:.2f} [msec]')
 
-    results = non_max_suppression(t_outputs)
+    # Reshape and post-process the output
+    num_dets = np.array(trt_outputs[0]).reshape((input_image.shape[0], 1)) 
+    det_boxes = np.array(trt_outputs[1]).reshape((input_image.shape[0], 300, 4)) 
+    det_scores = np.array(trt_outputs[2]).reshape((input_image.shape[0], 300)) 
+    det_classes = np.array(trt_outputs[3]).reshape((input_image.shape[0], 300)) 
     
-    # Print results for each image in the batch
-    for img_idx, (boxes, scores, classes) in enumerate(results):
-        print(f"Image {img_idx + 1}:")
-        print(f"  Boxes: {boxes}")
-        print(f"  Scores: {scores}")
-        print(f"  Classes: {coco_labels[classes[0]]}")
-    
-    labels = []
-    for i_idx, classe in enumerate(classes):
-        labels.append(coco_labels[classe])
-        
-    output_img = draw_bounding_boxes(img, boxes, labels, scores)
-    
-    # 샘플 결과 출력 및 저장
-    save_path = os.path.join(current_directory, 'save', f'{os.path.splitext(image_file_name)[0]}_{model_name}_{precision}{quantization_method}.jpg')
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    cv2.imwrite(save_path, output_img)
-    
+    output = trt_outputs[0]
+    bboxes = det_boxes[0]
+    restored_bboxes = scale_boxes_back(bboxes, scale, pad, (height, width))
+    cls = det_classes[0]
+    scores = det_scores[0]
+
+    confthre = 0.25
+    result_image = vis(raw_img, restored_bboxes, scores, cls, confthre, COCO_CLASSES)
+    save_file_name = os.path.join(save_dir_path, f"{image_file_name}_trt.jpg")
+    print("Saving detection result in {}".format(save_file_name))
+    cv2.imwrite(save_file_name, result_image)
+
     common.free_buffers(inputs, outputs, stream)
     print("[TRT_E] Inference succeeded!")
 
