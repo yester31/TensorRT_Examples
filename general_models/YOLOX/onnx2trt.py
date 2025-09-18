@@ -330,6 +330,7 @@ def main():
             engine.create_execution_context() as context:
 
         inputs, outputs, bindings, stream = common.allocate_buffers(engine)
+        inputs[0].host = tensor
 
         # Warm-up
         for i in range(50):
@@ -338,7 +339,6 @@ def main():
         # Inference loop
         for i in range(iteration):
             begin = time.time()
-            inputs[0].host = tensor
             trt_outputs = common.do_inference(context, engine=engine, bindings=bindings, inputs=inputs, outputs=outputs, stream=stream)
             dur_time += time.time() - begin
 

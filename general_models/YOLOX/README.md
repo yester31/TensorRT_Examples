@@ -46,9 +46,9 @@
     python onnx2trt.py
     ```
 - fp16   
-    [TRT_E] 1000 iterations time: 4.2332 [sec]   
-    [TRT_E] Average FPS: 236.23 [fps]   
-    [TRT_E] Average inference time: 4.23 [msec]     
+    [TRT_E] 1000 iterations time: 3.7538 [sec]
+    [TRT_E] Average FPS: 266.40 [fps]
+    [TRT_E] Average inference time: 3.75 [msec]     
     GPU mem : 170M      
 
 
