@@ -10,13 +10,14 @@ import numpy as np
 import time
 import common
 from common import *
-import torchvision
 
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {DEVICE}")
 
 TRT_LOGGER = trt.Logger(trt.Logger.INFO)
+trt.init_libnvinfer_plugins(TRT_LOGGER, "")
+
 def get_engine(onnx_file_path, engine_file_path="", precision='fp32', dynamic_input_shapes=None):
     """Load or build a TensorRT engine based on the ONNX model."""
     def build_engine():
@@ -115,53 +116,6 @@ def transform_cv(img, input_size=(640,640), swap=(2, 0, 1)):
     # Return as NumPy array (C-order)   
     return np.array(padded_img, dtype=np.float32, order="C"), r
 
-def postprocess(prediction, num_classes, conf_thre=0.7, nms_thre=0.45, class_agnostic=False):
-    prediction = torch.from_numpy(prediction)
-    box_corner = prediction.new(prediction.shape)
-    box_corner[:, :, 0] = prediction[:, :, 0] - prediction[:, :, 2] / 2
-    box_corner[:, :, 1] = prediction[:, :, 1] - prediction[:, :, 3] / 2
-    box_corner[:, :, 2] = prediction[:, :, 0] + prediction[:, :, 2] / 2
-    box_corner[:, :, 3] = prediction[:, :, 1] + prediction[:, :, 3] / 2
-    prediction[:, :, :4] = box_corner[:, :, :4]
-
-    output = [None for _ in range(len(prediction))]
-    for i, image_pred in enumerate(prediction):
-
-        # If none are remaining => process next image
-        if not image_pred.size(0):
-            continue
-        # Get score and class with highest confidence
-        class_conf, class_pred = torch.max(image_pred[:, 5: 5 + num_classes], 1, keepdim=True)
-
-        conf_mask = (image_pred[:, 4] * class_conf.squeeze() >= conf_thre).squeeze()
-        # Detections ordered as (x1, y1, x2, y2, obj_conf, class_conf, class_pred)
-        detections = torch.cat((image_pred[:, :5], class_conf, class_pred.float()), 1)
-        detections = detections[conf_mask]
-        if not detections.size(0):
-            continue
-
-        if class_agnostic:
-            nms_out_index = torchvision.ops.nms(
-                detections[:, :4],
-                detections[:, 4] * detections[:, 5],
-                nms_thre,
-            )
-        else:
-            nms_out_index = torchvision.ops.batched_nms(
-                detections[:, :4],
-                detections[:, 4] * detections[:, 5],
-                detections[:, 6],
-                nms_thre,
-            )
-
-        detections = detections[nms_out_index]
-        if output[i] is None:
-            output[i] = detections
-        else:
-            output[i] = torch.cat((output[i], detections))
-
-    return output
-
 def vis(img, boxes, scores, cls_ids, conf=0.5, class_names=None):
 
     for i in range(len(boxes)):
@@ -192,6 +146,7 @@ def vis(img, boxes, scores, cls_ids, conf=0.5, class_names=None):
             -1
         )
         cv2.putText(img, text, (x0, y0 + txt_size[1]), font, 0.4, txt_color, thickness=1)
+        print(f"detected : {text}, {(x0, y0), (x1, y1)}")
 
     return img
 
@@ -300,7 +255,7 @@ def main():
     dur_time = 0
 
     # Input
-    image_path = f"{CUR_DIR}/YOLOX/assets/dog.jpg"
+    image_path = f"{CUR_DIR}/data/dog.jpg"
     image_file_name = os.path.splitext(os.path.basename(image_path))[0]
     
     batch_size = 1
@@ -310,7 +265,7 @@ def main():
     height, width = img.shape[:2]
     print(f"[MDET] original image size : {height, width}")
     # image_rgb = cv2.cvtColor(raw_image, cv2.COLOR_BGR2RGB)
-    tensor, ratio = transform_cv(img)
+    input_image, ratio = transform_cv(img)
     orig_size = np.array([[width, height]])
 
     # Model and engine paths
@@ -321,6 +276,7 @@ def main():
     model_name = f"{model_name}_{input_h}x{input_w}"
     model_name = f"{model_name}_dynamic" if dynamic else model_name
     model_name = f"{model_name}_sim" if onnx_sim else model_name
+    model_name = f"{model_name}_w_nms"
     onnx_model_path = os.path.join(CUR_DIR, 'onnx', f'{model_name}.onnx')
     engine_file_path = os.path.join(CUR_DIR, 'engine', f'{model_name}_{precision}.engine')
     os.makedirs(os.path.dirname(engine_file_path), exist_ok=True)
@@ -330,7 +286,7 @@ def main():
             engine.create_execution_context() as context:
 
         inputs, outputs, bindings, stream = common.allocate_buffers(engine)
-        inputs[0].host = tensor
+        inputs[0].host = input_image
 
         # Warm-up
         for i in range(50):
@@ -350,20 +306,18 @@ def main():
     print(f'[TRT_E] Average inference time: {avg_time * 1000:.2f} [msec]')
 
     # Reshape and post-process the output
-    trt_outputs = np.array(trt_outputs[0]).reshape((1, 8400, 85))  
-
-    confthre = 0.25 
-    nmsthre = 0.45 
-    num_classes = len(COCO_CLASSES) # 80
-    trt_outputs = postprocess(trt_outputs, num_classes, confthre, nmsthre, class_agnostic=True)
-
+    num_dets = np.array(trt_outputs[0]).reshape((input_image.shape[0], 1)) 
+    det_boxes = np.array(trt_outputs[1]).reshape((input_image.shape[0], 300, 4)) 
+    det_scores = np.array(trt_outputs[2]).reshape((input_image.shape[0], 300)) 
+    det_classes = np.array(trt_outputs[3]).reshape((input_image.shape[0], 300)) 
+    
     output = trt_outputs[0]
-    bboxes = output[:, 0:4]
-    # preprocessing: resize
+    bboxes = det_boxes[0]
     bboxes /= ratio
-    cls = output[:, 6]
-    scores = output[:, 4] * output[:, 5]
+    cls = det_classes[0]
+    scores = det_scores[0]
 
+    confthre = 0.25
     result_image = vis(raw_img, bboxes, scores, cls, confthre, COCO_CLASSES)
     save_file_name = os.path.join(save_dir_path, f"{image_file_name}_trt.jpg")
     print("Saving detection result in {}".format(save_file_name))

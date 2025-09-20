@@ -20,8 +20,8 @@
 
 2. download pretrained checkpoints.
     ```
-    mkdir -p checkpoints
-    wget https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_s.pth -P checkpoints
+    mkdir -p pretrained
+    wget https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_s.pth -P pretrained
     ```
 3. run demo from original repository
     ```

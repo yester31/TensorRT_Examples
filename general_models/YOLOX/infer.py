@@ -6,7 +6,7 @@ import numpy as np
 
 from yolox.data.datasets import COCO_CLASSES
 from yolox.exp import get_exp
-from yolox.utils import fuse_model, get_model_info, postprocess, vis
+from yolox.utils import get_model_info, postprocess, vis
 
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -44,14 +44,15 @@ def main():
     model.half()  # to FP16
     model.eval()
 
-    ckpt_file = f"{CUR_DIR}/YOLOX/checkpoints/yolox_s.pth"
+    ckpt_file = f"{CUR_DIR}/YOLOX/pretrained/yolox_s.pth"
     print("loading checkpoint")
     ckpt = torch.load(ckpt_file, map_location="cpu")
     # load the model state dict
     model.load_state_dict(ckpt["model"])
     print("loaded checkpoint done.")
 
-    image_path = f"{CUR_DIR}/YOLOX/assets/dog.jpg"
+    image_path = f"{CUR_DIR}/data/dog.jpg"
+    image_file_name = os.path.splitext(os.path.basename(image_path))[0]
     img = cv2.imread(image_path)
 
     height, width = img.shape[:2]
@@ -70,7 +71,7 @@ def main():
     num_classes = exp.num_classes
     with torch.no_grad():
         t0 = time.time()
-        outputs = model(img)
+        outputs = model(img) # [1, 8400, 85], cxcywh[0:4] , class_conf[4:5], class_conf [5:85]
         outputs = postprocess(outputs, num_classes, confthre, nmsthre, class_agnostic=True)
         print("Infer time: {:.4f}s".format(time.time() - t0))
 
@@ -82,7 +83,7 @@ def main():
     scores = output[:, 4] * output[:, 5]
 
     result_image = vis(raw_img, bboxes, scores, cls, confthre, COCO_CLASSES)
-    save_file_name = os.path.join(save_dir_path, os.path.basename(image_path))
+    save_file_name = os.path.join(save_dir_path, f"{image_file_name}_pt.jpg")
     print("Saving detection result in {}".format(save_file_name))
     cv2.imwrite(save_file_name, result_image)
 
