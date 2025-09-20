@@ -46,12 +46,16 @@
     python onnx2trt.py
     ```
 - fp16   
-    [TRT_E] 1000 iterations time: 3.7538 [sec]
-    [TRT_E] Average FPS: 266.40 [fps]
-    [TRT_E] Average inference time: 3.75 [msec]     
-    GPU mem : 170M      
+    [TRT_E] 1000 iterations time: 3.3544 [sec]   
+    [TRT_E] Average FPS: 298.12 [fps]   
+    [TRT_E] Average inference time: 3.35 [msec]      
+    GPU mem : 174M      
 
 
 - [YOLOX: Exceeding YOLO Series in 2021](https://arxiv.org/pdf/2107.08430)
 - [YOLOX official GitHub](https://github.com/Megvii-BaseDetection/YOLOX)
 
+- TODO   
+    - Replace EfficientNMS with INMSLayer   
+        - Define a custom nn.Module using torchvision.ops.nms, then export it to ONNX.   
+        - Build a standalone network using the INMSLayer API.   
