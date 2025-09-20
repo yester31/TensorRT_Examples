@@ -30,7 +30,7 @@ def preproc(img, input_size, swap=(2, 0, 1)):
     return padded_img, r
 
 def main():
-    save_dir_path = os.path.join(CUR_DIR, 'results')
+    save_dir_path = os.path.join(CUR_DIR, '..', 'results')
     os.makedirs(save_dir_path, exist_ok=True)
 
     model_name = "yolox-s"
@@ -44,14 +44,14 @@ def main():
     model.half()  # to FP16
     model.eval()
 
-    ckpt_file = f"{CUR_DIR}/YOLOX/pretrained/yolox_s.pth"
+    ckpt_file = f"{CUR_DIR}/../YOLOX/pretrained/yolox_s.pth"
     print("loading checkpoint")
     ckpt = torch.load(ckpt_file, map_location="cpu")
     # load the model state dict
     model.load_state_dict(ckpt["model"])
     print("loaded checkpoint done.")
 
-    image_path = f"{CUR_DIR}/data/dog.jpg"
+    image_path = f"{CUR_DIR}/../data/dog.jpg"
     image_file_name = os.path.splitext(os.path.basename(image_path))[0]
     img = cv2.imread(image_path)
 
@@ -77,7 +77,6 @@ def main():
 
     output = outputs[0].cpu()
     bboxes = output[:, 0:4]
-    # preprocessing: resize
     bboxes /= ratio
     cls = output[:, 6]
     scores = output[:, 4] * output[:, 5]

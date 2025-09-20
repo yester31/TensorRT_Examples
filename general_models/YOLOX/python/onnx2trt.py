@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.insert(1, os.path.join(sys.path[0], "..", ".."))
+sys.path.insert(1, os.path.join(sys.path[0], "..", "..", ".."))
 
 import tensorrt as trt
 import torch
@@ -94,27 +94,25 @@ def get_engine(onnx_file_path, engine_file_path="", precision='fp32', dynamic_in
         return build_engine()
 
 def transform_cv(img, input_size=(640,640), swap=(2, 0, 1)):
+
+    ratio = min(input_size[0] / img.shape[0], input_size[1] / img.shape[1])
+    # resize
+    resized_img = cv2.resize(img, (int(img.shape[1] * ratio), int(img.shape[0] * ratio)),interpolation=cv2.INTER_LINEAR,).astype(np.uint8)
+    # pad
     if len(img.shape) == 3:
         padded_img = np.ones((input_size[0], input_size[1], 3), dtype=np.uint8) * 114
     else:
         padded_img = np.ones(input_size, dtype=np.uint8) * 114
+    padded_img[: int(img.shape[0] * ratio), : int(img.shape[1] * ratio)] = resized_img
 
-    r = min(input_size[0] / img.shape[0], input_size[1] / img.shape[1])
-    resized_img = cv2.resize(
-        img,
-        (int(img.shape[1] * r), int(img.shape[0] * r)),
-        interpolation=cv2.INTER_LINEAR,
-    ).astype(np.uint8)
-    padded_img[: int(img.shape[0] * r), : int(img.shape[1] * r)] = resized_img
-
-    padded_img = padded_img.transpose(swap)
+    padded_img = padded_img.transpose(swap) # (H,W,C) -> (C,H,W)
     padded_img = np.ascontiguousarray(padded_img, dtype=np.float32)
 
     # 3) Add batch dimension
-    padded_img = np.expand_dims(padded_img, axis=0)  # (1,C,H,W)
+    padded_img = np.expand_dims(padded_img, axis=0)  # (C,H,W) -> (1,C,H,W)
 
     # Return as NumPy array (C-order)   
-    return np.array(padded_img, dtype=np.float32, order="C"), r
+    return np.array(padded_img, dtype=np.float32, order="C"), ratio
 
 def vis(img, boxes, scores, cls_ids, conf=0.5, class_names=None):
 
@@ -248,14 +246,14 @@ _COLORS = np.array(
 ).astype(np.float32).reshape(-1, 3)
 
 def main():
-    save_dir_path = os.path.join(CUR_DIR, 'results')
+    save_dir_path = os.path.join(CUR_DIR, '..', 'results')
     os.makedirs(save_dir_path, exist_ok=True)
 
     iteration = 1000
     dur_time = 0
 
     # Input
-    image_path = f"{CUR_DIR}/data/dog.jpg"
+    image_path = f"{CUR_DIR}/../data/dog.jpg"
     image_file_name = os.path.splitext(os.path.basename(image_path))[0]
     
     batch_size = 1
@@ -264,9 +262,7 @@ def main():
     raw_img = img.copy()
     height, width = img.shape[:2]
     print(f"[MDET] original image size : {height, width}")
-    # image_rgb = cv2.cvtColor(raw_image, cv2.COLOR_BGR2RGB)
     input_image, ratio = transform_cv(img)
-    orig_size = np.array([[width, height]])
 
     # Model and engine paths
     precision = "fp16"   # int8 or fp32 or fp16
@@ -277,8 +273,8 @@ def main():
     model_name = f"{model_name}_dynamic" if dynamic else model_name
     model_name = f"{model_name}_sim" if onnx_sim else model_name
     model_name = f"{model_name}_w_nms"
-    onnx_model_path = os.path.join(CUR_DIR, 'onnx', f'{model_name}.onnx')
-    engine_file_path = os.path.join(CUR_DIR, 'engine', f'{model_name}_{precision}.engine')
+    onnx_model_path = os.path.join(CUR_DIR, '..', 'onnx', f'{model_name}.onnx')
+    engine_file_path = os.path.join(CUR_DIR, '..', 'engine', f'{model_name}_{precision}.engine')
     os.makedirs(os.path.dirname(engine_file_path), exist_ok=True)
 
     # Load or build the TensorRT engine and do inference
@@ -311,19 +307,16 @@ def main():
     det_scores = np.array(trt_outputs[2]).reshape((input_image.shape[0], 300)) 
     det_classes = np.array(trt_outputs[3]).reshape((input_image.shape[0], 300)) 
     
-    output = trt_outputs[0]
-    bboxes = det_boxes[0]
-    bboxes /= ratio
+    bboxes = det_boxes[0] / ratio
     cls = det_classes[0]
     scores = det_scores[0]
 
-    confthre = 0.25
+    confthre = 0.45
     result_image = vis(raw_img, bboxes, scores, cls, confthre, COCO_CLASSES)
-    save_file_name = os.path.join(save_dir_path, f"{image_file_name}_trt.jpg")
+    save_file_name = os.path.join(save_dir_path, f"{image_file_name}_trt_python.jpg")
     print("Saving detection result in {}".format(save_file_name))
     cv2.imwrite(save_file_name, result_image)
 
-    
     common.free_buffers(inputs, outputs, stream)
     print("[TRT_E] Inference succeeded!")
 

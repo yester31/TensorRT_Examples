@@ -93,7 +93,7 @@ def yolo_insert_nms(
     graph.cleanup().toposort()
 
     filename = os.path.splitext(os.path.basename(path))[0]
-    export_model_w_nms_path = f"{CUR_DIR}/onnx/{filename}_w_nms.onnx"
+    export_model_w_nms_path = f"{CUR_DIR}/../onnx/{filename}_w_nms.onnx"
     onnx.save(onnx_graphsurgeon.export_onnx(graph), export_model_w_nms_path)
 
 class YOLOX(torch.nn.Module):
@@ -124,11 +124,11 @@ class YOLOX(torch.nn.Module):
 def main():
 
     print('[MDET] Load model')
-    save_path = os.path.join(CUR_DIR, 'onnx')
+    save_path = os.path.join(CUR_DIR, '..', 'onnx')
     os.makedirs(save_path, exist_ok=True)
 
     model_name = "yolox-s"
-    ckpt_file = f"{CUR_DIR}/YOLOX/pretrained/yolox_s.pth"
+    ckpt_file = f"{CUR_DIR}/../YOLOX/pretrained/yolox_s.pth"
     model = YOLOX(model_name, ckpt_file)
     model.to(DEVICE)
     model.eval()
