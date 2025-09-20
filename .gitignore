@@ -20,7 +20,7 @@ dataset/
 wandb/
 test/
 calib_datas/
-*_ori
+*_ori*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
