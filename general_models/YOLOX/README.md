@@ -32,6 +32,7 @@
 ## DEMOS   
 ### 1. [YOLOX Python Version](python/README.md)    
 ### 2. [YOLOX Cpp Version](cpp/README.md)   
+### 3. [YOLOX Cpp Version 2](cpp2/README.md)   
 
 ----
 - [YOLOX: Exceeding YOLO Series in 2021](https://arxiv.org/pdf/2107.08430)
