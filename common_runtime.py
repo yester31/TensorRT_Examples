@@ -101,8 +101,15 @@ def allocate_buffers(engine: trt.ICudaEngine, output_shape = None, profile_idx: 
         shape = engine.get_tensor_shape(binding) if profile_idx is None else engine.get_tensor_profile_shape(binding, profile_idx)[-1]
         shape_valid = np.all([s >= 0 for s in shape])
         if not shape_valid and profile_idx is None:
-            raise ValueError(f"Binding {binding} has dynamic shape, {shape} but no profile was specified.")
-        
+            if binding == "labels":
+                shape = (1,300)
+            elif binding == 'boxes':
+                shape = (1,300,4)
+            elif binding == 'scores':
+                shape = (1,300)
+            else :
+                raise ValueError(f"Binding {binding} has dynamic shape, {shape} but no profile was specified.")
+
         size = trt.volume(shape)
         if profile_idx is not None:
             if binding == 'output':
