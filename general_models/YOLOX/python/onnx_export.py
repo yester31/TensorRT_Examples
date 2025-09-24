@@ -153,7 +153,7 @@ def main():
             export_model_path, 
             opset_version=20, 
             input_names=["input"],
-            output_names=["output"],
+            output_names=["boxes", "scores"],
         )
         print(f"[MDET] onnx model exported to: {export_model_path}")
 
