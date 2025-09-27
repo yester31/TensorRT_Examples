@@ -1,4 +1,4 @@
-# Face Detection (Yolov12)
+# Face Detection (Yolo12)
 
 ## How to Run
 
