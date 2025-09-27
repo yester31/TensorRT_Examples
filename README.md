@@ -172,11 +172,12 @@ conda env remove -n trte -y
   
 2. Object Detection  
   [2.1 Yolo11](general_models/Yolo11/README.md)   
-  [2.2 Yolov12(Face Detection)](general_models/Yolov12/README.md)   
+  [2.2 Yolo12](general_models/Yolo12/README.md)   
   [2.3 D-FINE](general_models/D-FINE/README.md)   
   [2.4 YOLOX](general_models/YOLOX/README.md) (with CPP demo)   
   [2.5 Dome-DETR](general_models/Dome-DETR/README.md)   
   [2.6 RF-DETR](general_models/RF-DETR/README.md)   
+  [2.7 RT-DETR](general_models/RT-DETR/README.md)   
 
 3. Instance Segmentation    
 
