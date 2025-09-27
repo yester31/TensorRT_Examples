@@ -28,8 +28,6 @@
     cd ..
     ```
 
-python references/deploy/rtdetrv2_torch.py -c pretrained/rtdetrv2_r18vd_120e_coco.yml -r pretrained/rtdetrv2_r18vd_120e_coco_rerun_48.1.pth --im-file=../../data/dog.jpg --device=cuda:0
-
 2. check pytorch model inference
     ```
     cd ..
@@ -47,18 +45,13 @@ python references/deploy/rtdetrv2_torch.py -c pretrained/rtdetrv2_r18vd_120e_coc
     ```
     python onnx2trt.py
     ```
+    
+- fp16 (RT-DETRv2-S)   
+    [TRT_E] 1000 iterations time: 5.0255 [sec]  
+    [TRT_E] Average FPS: 198.99 [fps]   
+    [TRT_E] Average inference time: 5.03 [msec]     
+    GPU mem : 228M   
 
-- fp32 (rf_detr_nano)   
-    [TRT_E] 1000 iterations time: 7.9187 [sec]
-    [TRT_E] Average FPS: 126.28 [fps]
-    [TRT_E] Average inference time: 7.92 [msec]
-    GPU mem : 250M   
-- fp16 (rf_detr_nano)   
-    [TRT_E] 1000 iterations time: 3.5675 [sec]
-    [TRT_E] Average FPS: 280.31 [fps]
-    [TRT_E] Average inference time: 3.57 [msec]
-    GPU mem : 190M   
-
-- [RF-DETR: SOTA Real-Time Object Detection Model](https://blog.roboflow.com/rf-detr/)
-- [RF-DETR official GitHub](https://github.com/roboflow/rf-detr)
+- [DETRs Beat YOLOs on Real-time Object Detection](https://arxiv.org/pdf/2304.08069)
+- [RT-DETR official GitHub](https://github.com/lyuwenyu/RT-DETR)
 
