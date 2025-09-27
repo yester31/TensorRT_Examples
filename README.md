@@ -178,6 +178,7 @@ conda env remove -n trte -y
   [2.5 Dome-DETR](general_models/Dome-DETR/README.md)   
   [2.6 RF-DETR](general_models/RF-DETR/README.md)   
   [2.7 RT-DETR](general_models/RT-DETR/README.md)   
+  [2.8 DEIM](general_models/DEIM/README.md)   
 
 3. Instance Segmentation    
 

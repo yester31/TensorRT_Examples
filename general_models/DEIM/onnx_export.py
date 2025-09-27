@@ -1,9 +1,13 @@
-# by yhpark 2025-9-5
-from infer import *
+# by yhpark 2025-9-27
 import torch.onnx
 import onnx
 import os 
+import sys
 from onnxsim import simplify
+import torch.nn as nn
+
+sys.path.insert(1, os.path.join(sys.path[0], "DEIM"))
+from engine.core import YAMLConfig
 
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -45,7 +49,17 @@ def simplify_onnx(export_model_path, export_model_sim_path):
         print(f"[MDET] simplification failed: {e}")
     checker_onnx(export_model_sim_path)
 
-
+class Model(nn.Module):
+    def __init__(self, cfg) -> None:
+        super().__init__()
+        self.model = cfg.model.deploy()
+        self.postprocessor = cfg.postprocessor.deploy()
+        
+    def forward(self, images, orig_target_sizes):
+        outputs = self.model(images)
+        outputs = self.postprocessor(outputs, orig_target_sizes)
+        return outputs
+    
 def main():
 
     print('[MDET] Load model')
@@ -54,24 +68,27 @@ def main():
 
     batch_size = 1
     input_h, input_w = 640, 640 
-
-    # model_name = "dfine_n_coco"
-    # config = f"{CUR_DIR}/D-FINE/configs/dfine/dfine_hgnetv2_n_coco.yml"
-    # resume = f"{CUR_DIR}/D-FINE/checkpoints/dfine_n_coco.pth"
-    model_name = "dfine_s_obj2coco"
-    config = f"{CUR_DIR}/D-FINE/configs/dfine/objects365/dfine_hgnetv2_s_obj2coco.yml"
-    resume = f"{CUR_DIR}/D-FINE/checkpoints/{model_name}.pth"
+    model_name = "deim_rtdetrv2_r18vd"
+    config = f"{CUR_DIR}/DEIM/configs/deim_rtdetrv2/deim_r18vd_120e_coco.yml"
+    resume = f"{CUR_DIR}/DEIM/pretrained/deim_rtdetrv2_r18vd_coco_120e.pth"
     cfg = YAMLConfig(config, resume=resume)
-    if "HGNetv2" in cfg.yaml_cfg:
-        cfg.yaml_cfg["HGNetv2"]["pretrained"] = False
-    checkpoint = torch.load(resume, map_location="cpu")
-    if "ema" in checkpoint:
-        state = checkpoint["ema"]["module"]
-    else:
-        state = checkpoint["model"]
-    cfg.model.load_state_dict(state)
-    model = Model(cfg).to(DEVICE)
+    if 'HGNetv2' in cfg.yaml_cfg:
+        cfg.yaml_cfg['HGNetv2']['pretrained'] = False
 
+    if resume:
+        checkpoint = torch.load(resume, map_location='cpu')
+        if 'ema' in checkpoint:
+            state = checkpoint['ema']['module']
+        else:
+            state = checkpoint['model']
+    else:
+        raise AttributeError('Only support resume to load model.state_dict by now.')
+
+    # Load train mode state and convert to deploy mode
+    cfg.model.load_state_dict(state)
+    model = Model(cfg)
+    model = model.eval().to(DEVICE)
+    
     onnx_sim = True # True or False
     dynamic = False  # True or False 
     model_name = f"{model_name}_{input_h}x{input_w}"
@@ -90,7 +107,7 @@ def main():
             export_model_path, 
             opset_version=20, 
             input_names=["input", "ori_size"],
-            output_names=["labels", "boxes", "scores"],
+            output_names=["labels", "boxes", "scores"]
         )
         print(f"[MDET] onnx model exported to: {export_model_path}")
 
